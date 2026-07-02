@@ -21,7 +21,8 @@
 
   header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:12px;flex-wrap:wrap}
   .greet{display:flex;align-items:center;gap:14px}
-  .avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--lime),var(--lime-dim));display:grid;place-items:center;font-weight:800;color:#0a0b0a;font-size:18px}
+  .avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--lime),var(--lime-dim));display:grid;place-items:center;font-weight:800;color:#0a0b0a;font-size:18px;overflow:hidden;cursor:pointer}
+  .avatar img{width:100%;height:100%;object-fit:cover;display:block}
   .greet small{display:block;color:var(--muted);font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .greet h1{font-size:19px;font-weight:700;letter-spacing:-.3px}
   .head-actions{display:flex;gap:10px;flex-wrap:wrap}
@@ -172,6 +173,28 @@
   html[data-theme="light"] .stats,
   html[data-theme="light"] .tx-panel{box-shadow:0 2px 10px -6px rgba(0,0,0,.12)}
   html[data-theme="light"] .balance{box-shadow:0 14px 34px -20px rgba(140,170,40,.7)}
+  /* Halaman Profil */
+  .profilegate{position:fixed;inset:0;background:var(--bg);z-index:90;display:none;overflow:auto;padding:20px}
+  .profilegate.open{display:block}
+  .profilewrap{max-width:520px;margin:0 auto}
+  .pfhead{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+  .pfhead h2{font-size:20px;font-weight:700}
+  .pfcard{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:16px}
+  .pfcenter{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .pfavatar{width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,var(--lime),var(--lime-dim));display:grid;place-items:center;font-weight:800;color:#0a0b0a;font-size:34px;overflow:hidden}
+  .pfavatar img{width:100%;height:100%;object-fit:cover;display:block}
+  .pfphotobtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  label.btn{cursor:pointer}
+  .pflabel{display:block;font-size:13px;color:var(--muted);font-weight:600;margin-bottom:7px}
+  .pfrow{display:flex;gap:10px}
+  .pfcard input{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-family:var(--font);font-size:15px;padding:11px 14px;border-radius:12px;outline:none}
+  .pfcard input:focus{border-color:var(--lime)}
+  .pfrow input{flex:1}
+  .pfsub{font-size:15px;font-weight:700;margin-bottom:14px}
+  .pfstatic{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:11px 14px;font-size:14px;word-break:break-all}
+  .pfhint{color:var(--muted);font-size:12px}
+  .pfmsg{font-size:13px;margin-top:8px;color:var(--lime);min-height:16px}
+  .pfmsg.err{color:var(--red)}
 </style>
 </head>
 <body>
@@ -195,8 +218,8 @@
 
 <header>
   <div class="greet">
-    <div class="avatar" id="avatarEl">?</div>
-    <div><small id="greetLine">Keuangan Saya</small><h1 id="userNameEl" title="Ketuk untuk ubah nama" style="cursor:pointer">Kamu</h1></div>
+    <div class="avatar" id="avatarEl" title="Buka profil">?</div>
+    <div><small id="greetLine">Keuangan Saya</small><h1 id="userNameEl" title="Buka profil" style="cursor:pointer">Kamu</h1></div>
   </div>
   <div class="head-actions">
     <button class="btn btn-ghost" id="themeBtn" title="Ganti mode siang/malam">🌙</button>
@@ -236,6 +259,39 @@
   <div class="tx-list" id="txList"></div>
 </div>
 
+<!-- HALAMAN PROFIL -->
+<div class="profilegate" id="profileGate">
+  <div class="profilewrap">
+    <div class="pfhead"><button class="xclose" id="pfBack">←</button><h2>Profil</h2></div>
+    <div class="pfcard pfcenter">
+      <div class="pfavatar" id="pfAvatar">?</div>
+      <div class="pfphotobtns">
+        <label class="btn btn-lime btn-sm">Ubah Foto<input type="file" id="pfPhoto" accept="image/*" hidden></label>
+        <button class="btn btn-ghost btn-sm" id="pfPhotoDel">Hapus Foto</button>
+      </div>
+    </div>
+    <div class="pfcard">
+      <label class="pflabel">Nama</label>
+      <div class="pfrow"><input id="pfName" type="text" placeholder="Nama kamu"/><button class="btn btn-lime btn-sm" id="pfNameSave">Simpan</button></div>
+      <div class="pfmsg" id="pfMsg"></div>
+    </div>
+    <div class="pfcard">
+      <h3 class="pfsub">Akun</h3>
+      <label class="pflabel">Email</label>
+      <div class="pfstatic" id="pfEmail">-</div>
+      <label class="pflabel" style="margin-top:14px">Password</label>
+      <div class="pfstatic">•••••••• <span class="pfhint">disembunyikan demi keamanan</span></div>
+      <div style="margin-top:16px">
+        <label class="pflabel">Ganti Password</label>
+        <input id="pfPass" type="password" placeholder="Password baru (min. 6 karakter)"/>
+        <input id="pfPass2" type="password" placeholder="Ulangi password baru" style="margin-top:8px"/>
+        <button class="btn btn-lime btn-sm" id="pfPassSave" style="margin-top:10px">Ganti Password</button>
+        <div class="pfmsg" id="pfPassMsg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="overlay">
   <div class="modal">
     <div class="dhead"><h3 id="modalTitle">Tambah Transaksi</h3><button class="xclose" id="cancelBtn">✕</button></div>
@@ -266,7 +322,7 @@ const CATS={masuk:["Gaji","Bonus","Bisnis Sampingan","Transfer Masuk","Hadiah","
   keluar:["Kebutuhan Harian","Makan & Minum","Transportasi","Tagihan","Belanja","Hiburan","Kesehatan","Lainnya"]};
 let tx=[],wallets=[],savings=[],loans=[];
 let period="bulanan",curType="keluar",chart=null;
-let supa=null,userId=null,currentUser=null,userName="";
+let supa=null,userId=null,currentUser=null,userName="",userAvatar=null;
 
 const rp=n=>"Rp "+(Math.round(n||0)).toLocaleString("id-ID");
 const $=id=>document.getElementById(id);
@@ -283,11 +339,11 @@ async function loadAll(){
   if(error){console.error("load:",error);}
   const d=data&&data.data?data.data:null;
   const meta=(currentUser&&currentUser.user_metadata)||{};
-  if(d&&Array.isArray(d.tx)){tx=d.tx;wallets=d.wallets||[];savings=d.savings||[];loans=d.loans||[];userName=d.name||meta.name||"";}
-  else{seed();userName=meta.name||"";await saveAll();}
+  if(d&&Array.isArray(d.tx)){tx=d.tx;wallets=d.wallets||[];savings=d.savings||[];loans=d.loans||[];userName=d.name||meta.name||"";userAvatar=d.avatar||null;}
+  else{seed();userName=meta.name||"";userAvatar=null;await saveAll();}
 }
 async function saveAll(){
-  const payload={user_id:userId,data:{tx,wallets,savings,loans,name:userName},updated_at:new Date().toISOString()};
+  const payload={user_id:userId,data:{tx,wallets,savings,loans,name:userName,avatar:userAvatar},updated_at:new Date().toISOString()};
   const {error}=await supa.from("dashboards").upsert(payload,{onConflict:"user_id"});
   if(error)console.error("save:",error);
 }
@@ -486,12 +542,48 @@ $("signupBtn").onclick=async()=>{
 $("logoutBtn").onclick=async()=>{if(supa)await supa.auth.signOut();};
 
 function initials(n){if(!n)return"👤";const p=n.trim().split(/\s+/);return((p[0][0]||"")+(p[1]?p[1][0]:"")).toUpperCase();}
-function setHeader(){$("userNameEl").textContent=userName||"Atur nama";$("avatarEl").textContent=initials(userName);}
-$("userNameEl").onclick=async()=>{const n=prompt("Nama kamu:",userName);if(n!==null){userName=n.trim();await saveAll();setHeader();}};
+function renderAvatar(el){if(userAvatar){el.innerHTML=`<img src="${userAvatar}" alt="foto profil"/>`;}else{el.textContent=initials(userName);}}
+function setHeader(){$("userNameEl").textContent=userName||"Atur nama";renderAvatar($("avatarEl"));}
+
+/* ---------- PROFIL ---------- */
+function openProfile(){
+  $("pfName").value=userName;
+  $("pfEmail").textContent=currentUser?currentUser.email:"-";
+  renderAvatar($("pfAvatar"));
+  $("pfMsg").textContent="";$("pfPass").value="";$("pfPass2").value="";$("pfPassMsg").textContent="";
+  $("profileGate").classList.add("open");
+}
+function closeProfile(){$("profileGate").classList.remove("open");}
+$("avatarEl").onclick=openProfile;
+$("userNameEl").onclick=openProfile;
+$("pfBack").onclick=closeProfile;
+$("pfNameSave").onclick=async()=>{userName=$("pfName").value.trim();await saveAll();setHeader();$("pfMsg").className="pfmsg";$("pfMsg").textContent="Nama tersimpan ✓";};
+$("pfPhoto").onchange=e=>{const f=e.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{const img=new Image();img.onload=async()=>{
+    const c=document.createElement("canvas");c.width=c.height=256;const ctx=c.getContext("2d");
+    const s=Math.min(img.width,img.height),sx=(img.width-s)/2,sy=(img.height-s)/2;
+    ctx.drawImage(img,sx,sy,s,s,0,0,256,256);
+    userAvatar=c.toDataURL("image/jpeg",0.85);
+    await saveAll();renderAvatar($("pfAvatar"));renderAvatar($("avatarEl"));
+    $("pfMsg").className="pfmsg";$("pfMsg").textContent="Foto profil tersimpan ✓";
+  };img.src=rd.result;};
+  rd.readAsDataURL(f);e.target.value="";
+};
+$("pfPhotoDel").onclick=async()=>{userAvatar=null;await saveAll();renderAvatar($("pfAvatar"));renderAvatar($("avatarEl"));$("pfMsg").className="pfmsg";$("pfMsg").textContent="Foto dihapus.";};
+function pfPassMsg(m,ok){const el=$("pfPassMsg");el.textContent=m;el.className="pfmsg"+(ok?"":" err");}
+$("pfPassSave").onclick=async()=>{const p=$("pfPass").value,p2=$("pfPass2").value;
+  if(p.length<6){pfPassMsg("Password minimal 6 karakter.");return;}
+  if(p!==p2){pfPassMsg("Konfirmasi password tidak sama.");return;}
+  pfPassMsg("Menyimpan...",true);
+  const {error}=await supa.auth.updateUser({password:p});
+  if(error){pfPassMsg(error.message);return;}
+  pfPassMsg("Password berhasil diganti ✓",true);$("pfPass").value="";$("pfPass2").value="";
+};
 
 async function onLoggedIn(session){
   currentUser=session.user;userId=session.user.id;
-  hideAuth();await loadAll();setHeader();render();
+  hideAuth();closeProfile();await loadAll();setHeader();render();
 }
 
 /* ---------- START ---------- */

@@ -206,14 +206,17 @@
   #logoutBtn svg{width:16px;height:16px}
   #laporanBtn svg{width:16px;height:16px}
   /* Kartu Uang di Luar Tabungan (warna beda dari total) */
-  .cardfull{background:linear-gradient(135deg,#4f7dff,#7c5cff);border:none;color:#fff;box-shadow:0 16px 38px -22px rgba(90,110,255,.75)}
-  .cardfull.clickable:hover{background:linear-gradient(135deg,#5a86ff,#875fff);border:none;filter:brightness(1.03);transform:translateY(-2px)}
-  .cardfull .label{color:rgba(255,255,255,.82)}
-  .cardfull .val{color:#fff}
-  .cardfull .hint{color:rgba(255,255,255,.72);opacity:1}
-  .cardfull .cf-sub{color:rgba(255,255,255,.78)}
-  .cardfull .cf-sub b.lime{color:#dcff6b}
-  .cardfull .cf-sub b.red{color:#ffcccc}
+  .cardfull{background:linear-gradient(135deg,#5fdc93,#20a069 80%);border:none;color:#062b1c;overflow:hidden;box-shadow:0 16px 38px -22px rgba(32,160,105,.75)}
+  .cardfull::after{content:"";position:absolute;right:-30px;top:-45px;width:175px;height:175px;border-radius:50%;background:rgba(255,255,255,.16)}
+  .cardfull::before{content:"";position:absolute;left:-30px;bottom:-70px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.08)}
+  .cardfull>*{position:relative;z-index:1}
+  .cardfull.clickable:hover{background:linear-gradient(135deg,#68e39c,#25b076 80%);border:none;filter:brightness(1.02);transform:translateY(-2px)}
+  .cardfull .label{color:rgba(6,43,28,.78)}
+  .cardfull .val{color:#062b1c}
+  .cardfull .hint{color:rgba(6,43,28,.72);opacity:1}
+  .cardfull .cf-sub{color:rgba(6,43,28,.72)}
+  .cardfull .cf-sub b.lime{color:#08401f}
+  .cardfull .cf-sub b.red{color:#7a1e1e}
   /* Ikon warna-warni */
   .ic.ic-in{background:rgba(198,244,50,.16);color:var(--lime)}
   .ic.ic-out{background:rgba(255,107,107,.16);color:var(--red)}
@@ -242,8 +245,7 @@
   .lapstat{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
   .lapstat .s{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
   .lapstat .s .l{font-size:12px;color:var(--muted)} .lapstat .s .v{font-size:18px;font-weight:800;margin-top:5px}
-</style>
-  .cardfull{margin-top:14px}
+  .cardfull{margin-top:18px}
   .cf-row{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
   .cf-sub{display:flex;gap:20px;font-size:12px;color:var(--muted);text-align:right}
   .cf-sub b{display:block;font-size:15px;margin-top:3px;font-weight:700}

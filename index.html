@@ -122,7 +122,7 @@
   .wrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
   .wrow:last-child{border-bottom:none}
   .wrow input.wn{flex:1;background:transparent;border:none;color:var(--text);font-family:var(--font);font-weight:600;font-size:14.5px;outline:none}
-  .wrow input.wa{width:140px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-family:var(--font);font-size:14px;padding:8px 10px;border-radius:10px;outline:none;text-align:right}
+  .wrow input.wa{width:160px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-family:var(--font);font-size:14px;padding:8px 10px;border-radius:10px;outline:none;text-align:right}
   .wrow input:focus{border-color:var(--lime)}
   .loan{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
   .loan .ltop{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
@@ -298,7 +298,7 @@
     <div class="field"><label>Jenis</label><div class="seg"><button type="button" id="segIn" data-type="masuk">↑ Pemasukan</button><button type="button" id="segOut" data-type="keluar">↓ Pengeluaran</button></div></div>
     <div class="field"><label>Keterangan</label><input id="fNote" type="text" placeholder="mis. Gaji, Makan siang, Bensin" /></div>
     <div class="field"><label>Kategori</label><select id="fCat"></select></div>
-    <div class="field"><label>Nominal (Rp)</label><input id="fAmt" type="number" inputmode="numeric" placeholder="0" min="0" /></div>
+    <div class="field"><label>Nominal (Rp)</label><input id="fAmt" class="money" type="text" inputmode="numeric" placeholder="Rp 0" /></div>
     <div class="field"><label id="fPosLabel">Kaitkan ke pos (opsional)</label><select id="fPos"></select></div>
     <div class="note" id="fPosNote">Jika pos dipilih, saldo pos akan otomatis bertambah/berkurang.</div>
     <div class="field"><label>Tanggal</label><input id="fDate" type="date" /></div>
@@ -325,6 +325,13 @@ let period="bulanan",curType="keluar",chart=null;
 let supa=null,userId=null,currentUser=null,userName="",userAvatar=null;
 
 const rp=n=>"Rp "+(Math.round(n||0)).toLocaleString("id-ID");
+const digitsOnly=s=>(s+"").replace(/\D/g,"");
+const groupTh=d=>d.replace(/\B(?=(\d{3})+(?!\d))/g,".");
+const fmtRpInput=v=>{const d=digitsOnly(v);return d?"Rp "+groupTh(d):"";};
+const parseRp=v=>{const d=digitsOnly(v);return d?parseInt(d,10):0;};
+function attachMoney(el){if(!el||el._money)return;el._money=1;el.addEventListener("input",()=>{const p=el.selectionStart,old=el.value.length;el.value=fmtRpInput(el.value);const diff=el.value.length-old;try{el.setSelectionRange(p+diff,p+diff);}catch(e){}});}
+function wireMoney(root){(root||document).querySelectorAll(".money").forEach(attachMoney);}
+let lastBackup=null;
 const $=id=>document.getElementById(id);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -420,7 +427,7 @@ function fillCats(t){$("fCat").innerHTML=CATS[t].map(c=>`<option>${c}</option>`)
 function fillPos(){$("fPos").innerHTML=posOptions("");$("fPosLabel").textContent=curType==="masuk"?"Masuk ke pos (opsional)":"Keluar dari pos (opsional)";
   $("fPosNote").textContent=curType==="masuk"?"Jika pos dipilih, saldonya otomatis bertambah.":"Jika pos dipilih, saldonya otomatis berkurang.";}
 async function saveTxNew(){
-  const amt=parseFloat($("fAmt").value);if(!amt||amt<=0){$("fAmt").focus();$("fAmt").style.borderColor="var(--red)";return;}
+  const amt=parseRp($("fAmt").value);if(!amt||amt<=0){$("fAmt").focus();$("fAmt").style.borderColor="var(--red)";return;}
   const pos=$("fPos").value||null;
   tx.push({id:uid(),type:curType,cat:$("fCat").value,note:$("fNote").value.trim(),amt,date:$("fDate").value,pos});
   if(pos)adjWallet(pos,curType==="masuk"?+amt:-amt);
@@ -445,9 +452,9 @@ function openDetail(kind){
     const list=[...savings].sort((a,b)=>new Date(b.date)-new Date(a.date));
     b.innerHTML=`<div class="dsum"><div class="k">Total tabungan<b class="lime">${rp(sumSav())}</b></div><div class="k">Jumlah setoran<b>${list.length}</b></div></div>
       <div class="field"><label>Ambil dari pos (saldo pos akan berkurang)</label><select id="sv_src">${posOptions("")}</select></div>
-      <div class="addrow"><input id="sv_amt" type="number" placeholder="Nominal (Rp)"/><input id="sv_date" type="date" value="${new Date().toISOString().slice(0,10)}"/><input id="sv_note" type="text" placeholder="Catatan"/><button class="btn btn-lime btn-sm" id="sv_add">+ Nabung</button></div>
+      <div class="addrow"><input id="sv_amt" class="money" type="text" inputmode="numeric" placeholder="Rp 0"/><input id="sv_date" type="date" value="${new Date().toISOString().slice(0,10)}"/><input id="sv_note" type="text" placeholder="Catatan"/><button class="btn btn-lime btn-sm" id="sv_add">+ Nabung</button></div>
       <div class="dlist">${list.length?list.map(x=>{const pn=x.src?posName(x.src):null;return `<div class="drow"><div class="di in">🐖</div><div class="dm"><div class="t">${esc(x.note||"Setoran")}</div><div class="s">${dstr(x.date)}${pn?' · dari '+esc(pn):''}</div></div><div class="da lime">+${rp(x.amt)}</div><button class="delx" data-id="${x.id}">✕</button></div>`;}).join(""):'<div class="empty">Belum ada setoran.</div>'}</div>`;
-    $("sv_add").onclick=async()=>{const a=parseFloat($("sv_amt").value);if(!a||a<=0){$("sv_amt").focus();return;}
+    $("sv_add").onclick=async()=>{const a=parseRp($("sv_amt").value);if(!a||a<=0){$("sv_amt").focus();return;}
       const src=$("sv_src").value||null;savings.push({id:uid(),amt:a,date:$("sv_date").value,note:$("sv_note").value.trim(),src});
       if(src)adjWallet(src,-a);await saveAll();render();openDetail("tabungan");};
     b.querySelectorAll(".delx").forEach(btn=>btn.onclick=async()=>{const s=savings.find(x=>x.id===btn.dataset.id);if(s&&s.src)adjWallet(s.src,+s.amt);
@@ -462,12 +469,12 @@ function openDetail(kind){
         <div class="lg"><span>Total<b>${rp(l.total)}</b></span><span>Dibayar<b class="lime">${rp(paid)}</b></span><span>Sisa<b class="red">${rp(rem)}</b></span></div>
         <div class="bar"><i style="width:${pct}%"></i></div>
         <div class="paylist">${l.payments.length?l.payments.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(p=>{const pn=p.src?posName(p.src):null;return `<div class="p"><span>${dstr(p.date)}${pn?' · '+esc(pn):''}</span><span>${rp(p.amt)} <button class="delx" data-pay="${l.id}:${p.id}" style="padding:0 4px">✕</button></span></div>`;}).join(""):'<div style="padding:4px 0">Belum ada pembayaran.</div>'}</div>
-        <div class="loanpay"><input type="number" placeholder="Nominal bayar" data-amt="${l.id}"/><input type="date" value="${new Date().toISOString().slice(0,10)}" data-pdate="${l.id}"/><select data-psrc="${l.id}">${posOptions("")}</select><button class="btn btn-lime btn-sm" data-pay-add="${l.id}">Bayar</button></div></div>`;}).join("")}
-      <div class="addrow" style="margin-top:6px"><input id="ln_name" type="text" placeholder="Nama pinjaman baru"/><input id="ln_total" type="number" placeholder="Total pinjaman (Rp)"/><button class="btn btn-ghost btn-sm" id="ln_add">+ Pinjaman</button></div>`;
-    $("ln_add").onclick=async()=>{const n=$("ln_name").value.trim(),tt=parseFloat($("ln_total").value);if(!n||!tt||tt<=0){$("ln_name").focus();return;}
+        <div class="loanpay"><input class="money" type="text" inputmode="numeric" placeholder="Rp 0" data-amt="${l.id}"/><input type="date" value="${new Date().toISOString().slice(0,10)}" data-pdate="${l.id}"/><select data-psrc="${l.id}">${posOptions("")}</select><button class="btn btn-lime btn-sm" data-pay-add="${l.id}">Bayar</button></div></div>`;}).join("")}
+      <div class="addrow" style="margin-top:6px"><input id="ln_name" type="text" placeholder="Nama pinjaman baru"/><input id="ln_total" class="money" type="text" inputmode="numeric" placeholder="Total pinjaman (Rp)"/><button class="btn btn-ghost btn-sm" id="ln_add">+ Pinjaman</button></div>`;
+    $("ln_add").onclick=async()=>{const n=$("ln_name").value.trim(),tt=parseRp($("ln_total").value);if(!n||!tt||tt<=0){$("ln_name").focus();return;}
       loans.push({id:uid(),name:n,total:tt,payments:[]});await saveAll();render();openDetail("angsuran");};
     b.querySelectorAll("[data-pay-add]").forEach(btn=>btn.onclick=async()=>{const id=btn.dataset.payAdd;
-      const a=parseFloat(b.querySelector(`[data-amt="${id}"]`).value);const dt=b.querySelector(`[data-pdate="${id}"]`).value;const src=b.querySelector(`[data-psrc="${id}"]`).value||null;
+      const a=parseRp(b.querySelector(`[data-amt="${id}"]`).value);const dt=b.querySelector(`[data-pdate="${id}"]`).value;const src=b.querySelector(`[data-psrc="${id}"]`).value||null;
       if(!a||a<=0)return;const l=loans.find(x=>x.id===id);l.payments.push({id:uid(),amt:a,date:dt,src});if(src)adjWallet(src,-a);await saveAll();render();openDetail("angsuran");});
     b.querySelectorAll("[data-loan]").forEach(btn=>btn.onclick=async()=>{const l=loans.find(x=>x.id===btn.dataset.loan);
       if(l)l.payments.forEach(p=>{if(p.src)adjWallet(p.src,+p.amt);});loans=loans.filter(x=>x.id!==btn.dataset.loan);await saveAll();render();openDetail("angsuran");});
@@ -478,16 +485,35 @@ function openDetail(kind){
     t.textContent="Pos Keuangan";
     b.innerHTML=`<div class="dsum"><div class="k">Total keuangan<b class="lime">${rp(sumWall())}</b></div><div class="k">Jumlah pos<b>${wallets.length}</b></div></div>
       <div class="note">Ini saldo yang kamu isi sendiri. Nabung & bayar angsuran otomatis mengurangi pos di sini.</div>
-      <div class="dlist">${wallets.map(w=>`<div class="wrow"><input class="wn" value="${esc(w.name)}" data-name="${w.id}"/><input class="wa" type="number" value="${w.amount}" data-amt="${w.id}"/><button class="delx" data-del="${w.id}">✕</button></div>`).join("")}</div>
-      <div class="addrow" style="margin-top:14px"><input id="w_name" type="text" placeholder="Nama pos (mis. Dompet)"/><input id="w_amt" type="number" placeholder="Saldo (Rp)"/><button class="btn btn-lime btn-sm" id="w_add">+ Pos</button></div>
-      <div style="margin-top:22px;border-top:1px solid var(--line);padding-top:16px"><button class="btn btn-danger btn-sm" id="resetBtn">🗑 Kosongkan semua data</button><div class="note" style="margin-top:8px">Menghapus seluruh transaksi, pos, tabungan, dan angsuran di akun ini.</div></div>`;
-    $("resetBtn").onclick=resetAll;
-    $("w_add").onclick=async()=>{const n=$("w_name").value.trim(),a=parseFloat($("w_amt").value)||0;if(!n){$("w_name").focus();return;}
+      <div class="dlist">${wallets.map(w=>`<div class="wrow"><input class="wn" value="${esc(w.name)}" data-name="${w.id}"/><input class="wa money" type="text" inputmode="numeric" value="${fmtRpInput(w.amount)}" data-amt="${w.id}"/><button class="delx" data-del="${w.id}">✕</button></div>`).join("")}</div>
+      <div class="addrow" style="margin-top:14px"><input id="w_name" type="text" placeholder="Nama pos (mis. Dompet)"/><input id="w_amt" class="money" type="text" inputmode="numeric" placeholder="Saldo (Rp)"/><button class="btn btn-lime btn-sm" id="w_add">+ Pos</button></div>
+      <div style="margin-top:22px;border-top:1px solid var(--line);padding-top:16px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-danger btn-sm" id="resetBtn">🗑 Kosongkan semua data</button>
+          <button class="btn btn-ghost btn-sm" id="undoBtn" ${lastBackup?"":'disabled style="opacity:.45"'}>↩ Urungkan</button>
+        </div>
+        <div id="resetConfirm" style="display:none;margin-top:12px;background:var(--red-dim);border:1px solid var(--red);border-radius:12px;padding:14px">
+          <div style="font-size:13px;margin-bottom:10px">Yakin mau kosongkan <b>SEMUA data</b>? Masih bisa diurungkan setelah ini.</div>
+          <div style="display:flex;gap:10px"><button class="btn btn-danger btn-sm" id="resetYes">Ya, kosongkan</button><button class="btn btn-ghost btn-sm" id="resetNo">Batal</button></div>
+        </div>
+        <div class="note" style="margin-top:8px">Menghapus seluruh transaksi, pos, tabungan, dan angsuran di akun ini.</div>
+      </div>`;
+    $("resetBtn").onclick=()=>{$("resetConfirm").style.display="block";};
+    $("resetNo").onclick=()=>{$("resetConfirm").style.display="none";};
+    $("resetYes").onclick=async()=>{
+      lastBackup={tx:JSON.parse(JSON.stringify(tx)),wallets:JSON.parse(JSON.stringify(wallets)),savings:JSON.parse(JSON.stringify(savings)),loans:JSON.parse(JSON.stringify(loans))};
+      tx=[];wallets=[];savings=[];loans=[];await saveAll();render();openDetail("wallet");
+    };
+    if($("undoBtn"))$("undoBtn").onclick=async()=>{if(!lastBackup)return;
+      tx=lastBackup.tx;wallets=lastBackup.wallets;savings=lastBackup.savings;loans=lastBackup.loans;lastBackup=null;
+      await saveAll();render();openDetail("wallet");};
+    $("w_add").onclick=async()=>{const n=$("w_name").value.trim(),a=parseRp($("w_amt").value);if(!n){$("w_name").focus();return;}
       wallets.push({id:uid(),name:n,amount:a});await saveAll();render();openDetail("wallet");};
     b.querySelectorAll("[data-name]").forEach(i=>i.onchange=async()=>{const w=wallets.find(x=>x.id===i.dataset.name);w.name=i.value.trim()||"Pos";await saveAll();render();});
-    b.querySelectorAll("[data-amt]").forEach(i=>i.onchange=async()=>{const w=wallets.find(x=>x.id===i.dataset.amt);w.amount=parseFloat(i.value)||0;await saveAll();render();});
+    b.querySelectorAll("[data-amt]").forEach(i=>i.onchange=async()=>{const w=wallets.find(x=>x.id===i.dataset.amt);w.amount=parseRp(i.value);await saveAll();render();});
     b.querySelectorAll("[data-del]").forEach(btn=>btn.onclick=async()=>{wallets=wallets.filter(x=>x.id!==btn.dataset.del);await saveAll();render();openDetail("wallet");});
   }
+  wireMoney($("dBody"));
   $("detailOverlay").classList.add("open");
 }
 
@@ -498,6 +524,7 @@ $("segIn").onclick=()=>{curType="masuk";setSeg("masuk");fillCats("masuk");fillPo
 $("segOut").onclick=()=>{curType="keluar";setSeg("keluar");fillCats("keluar");fillPos();};
 $("cancelBtn").onclick=closeTx;$("cancelBtn2").onclick=closeTx;$("saveBtn").onclick=saveTxNew;
 $("fAmt").oninput=()=>$("fAmt").style.borderColor="var(--line)";
+attachMoney($("fAmt"));
 $("overlay").onclick=e=>{if(e.target.id==="overlay")closeTx();};
 $("dClose").onclick=closeDetail;$("detailOverlay").onclick=e=>{if(e.target.id==="detailOverlay")closeDetail();};
 $("balanceCard").onclick=()=>openDetail("wallet");

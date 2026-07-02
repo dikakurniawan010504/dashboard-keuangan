@@ -195,6 +195,19 @@
   .pfhint{color:var(--muted);font-size:12px}
   .pfmsg{font-size:13px;margin-top:8px;color:var(--lime);min-height:16px}
   .pfmsg.err{color:var(--red)}
+  /* Brandmark & kartu penuh & filter statistik */
+  .brandmark{display:flex;align-items:center;gap:12px;margin-left:4px}
+  .bm-line{width:1px;height:36px;background:linear-gradient(180deg,transparent,var(--line) 20%,var(--line) 80%,transparent)}
+  .bm-text{font-family:Georgia,"Times New Roman",serif;font-style:italic;font-size:13.5px;color:var(--muted);letter-spacing:.3px;white-space:nowrap}
+  .bm-text i{font-style:italic;font-weight:600;background:linear-gradient(90deg,var(--lime),var(--lime-dim));-webkit-background-clip:text;background-clip:text;color:transparent}
+  @media(max-width:680px){.brandmark{display:none}}
+  .cardfull{margin-top:14px}
+  .cf-row{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+  .cf-sub{display:flex;gap:20px;font-size:12px;color:var(--muted);text-align:right}
+  .cf-sub b{display:block;font-size:15px;margin-top:3px;font-weight:700}
+  .statfilters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .statfilters select{background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-family:var(--font);font-size:12.5px;padding:7px 10px;border-radius:10px;outline:none;cursor:pointer}
+  .statfilters select:focus{border-color:var(--lime)}
 </style>
 </head>
 <body>
@@ -220,6 +233,7 @@
   <div class="greet">
     <div class="avatar" id="avatarEl" title="Buka profil">?</div>
     <div><small id="greetLine">Keuangan Saya</small><h1 id="userNameEl" title="Buka profil" style="cursor:pointer">Kamu</h1></div>
+    <div class="brandmark"><span class="bm-line"></span><span class="bm-text">by&nbsp;<i>dikakurniawan</i></span></div>
   </div>
   <div class="head-actions">
     <button class="btn btn-ghost" id="themeBtn" title="Ganti mode siang/malam">🌙</button>
@@ -234,7 +248,14 @@
     <div class="balance" id="balanceCard">
       <div class="row"><span class="tag">Total Keuangan</span><span class="chip">Kelola Pos →</span></div>
       <div class="amount" id="balanceVal">Rp 0</div>
-      <div class="sub" id="balanceSub">Ketuk untuk isi & kelola pos uang</div>
+      <div class="sub" id="balanceSub">Pos + Tabungan · ketuk untuk kelola pos</div>
+    </div>
+    <div class="card clickable cardfull" data-detail="wallet">
+      <div class="cf-row">
+        <div><div class="label">Uang di Luar Tabungan</div><div class="val lime" id="outsideVal">Rp 0</div></div>
+        <div class="cf-sub"><span>Total Masuk<b class="lime" id="cfIn">Rp 0</b></span><span>Total Keluar<b class="red" id="cfOut">Rp 0</b></span></div>
+      </div>
+      <div class="hint">Uang siap pakai (di luar tabungan) · ketuk untuk kelola pos →</div>
     </div>
     <div class="summary">
       <div class="card clickable" data-detail="masuk"><div class="ic">↑</div><div class="label">Uang Masuk</div><div class="val lime" id="inVal">Rp 0</div><div class="hint">Ketuk untuk rincian →</div></div>
@@ -245,8 +266,13 @@
   </div>
   <div>
     <div class="stats">
-      <div class="stats-head"><h2>Statistik Arus Kas</h2>
+      <div class="stats-head"><h2>Statistik Keuangan</h2>
         <div class="toggle" id="periodToggle"><button data-p="harian">Harian</button><button data-p="mingguan">Mingguan</button><button data-p="bulanan" class="active">Bulanan</button></div>
+      </div>
+      <div class="statfilters">
+        <select id="fltYear"><option value="">Semua tahun</option></select>
+        <select id="fltMonth"><option value="">Semua bulan</option><option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select>
+        <select id="fltDay"><option value="">Semua tanggal</option></select>
       </div>
       <div class="chart-wrap"><canvas id="chart"></canvas></div>
       <div class="legend"><span><i class="dot" style="background:var(--lime)"></i> Pemasukan</span><span><i class="dot" style="background:var(--red)"></i> Pengeluaran</span></div>
@@ -366,13 +392,17 @@ async function resetAll(){
 
 const sumTx=t=>tx.filter(x=>x.type===t).reduce((s,x)=>s+x.amt,0);
 const sumWall=()=>wallets.reduce((s,w)=>s+(+w.amount||0),0);
-const sumSav=()=>savings.reduce((s,x)=>s+x.amt,0);
+const svAmt=x=>((x.type==="out"?-1:1)*x.amt);
+const sumSav=()=>savings.reduce((s,x)=>s+svAmt(x),0);
 const loanPaid=l=>l.payments.reduce((s,p)=>s+p.amt,0);
 const loanRem=l=>Math.max(0,l.total-loanPaid(l));
 const sumRem=()=>loans.reduce((s,l)=>s+loanRem(l),0);
 
 function render(){
-  $("balanceVal").textContent=rp(sumWall());
+  $("balanceVal").textContent=rp(sumWall()+sumSav());
+  $("outsideVal").textContent=rp(sumWall());
+  $("cfIn").textContent=rp(sumTx("masuk"));
+  $("cfOut").textContent=rp(sumTx("keluar"));
   $("inVal").textContent=rp(sumTx("masuk"));
   $("outVal").textContent=rp(sumTx("keluar"));
   $("savVal").textContent=rp(sumSav());
@@ -396,11 +426,31 @@ function rowHTML(t){
 async function delTx(id){const t=tx.find(x=>x.id===id);if(t&&t.pos)adjWallet(t.pos,t.type==="masuk"?-t.amt:+t.amt);
   tx=tx.filter(x=>x.id!==id);await saveAll();render();if($("detailOverlay").classList.contains("open"))openDetail(window._dk||"masuk");}
 
+function populateYears(){
+  const sel=$("fltYear");if(!sel)return;const cur=sel.value;
+  const years=new Set(tx.map(t=>(t.date||"").slice(0,4)).filter(Boolean));years.add(String(new Date().getFullYear()));
+  const arr=[...years].sort().reverse();
+  sel.innerHTML='<option value="">Semua tahun</option>'+arr.map(y=>`<option value="${y}">${y}</option>`).join("");
+  const days=$("fltDay");if(days&&days.options.length<=1){days.innerHTML='<option value="">Semua tanggal</option>'+Array.from({length:31},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join("");}
+  if(cur)sel.value=cur;
+}
 function bucket(){
-  const now=new Date();let labels=[],keys=[];
-  if(period==="harian"){for(let i=6;i>=0;i--){const x=new Date(now);x.setDate(x.getDate()-i);labels.push(x.toLocaleDateString("id-ID",{weekday:"short"}));keys.push([x.toISOString().slice(0,10),x.toISOString().slice(0,10)]);}}
-  else if(period==="mingguan"){for(let i=5;i>=0;i--){const e=new Date(now);e.setDate(e.getDate()-i*7);const s=new Date(e);s.setDate(s.getDate()-6);labels.push(e.toLocaleDateString("id-ID",{day:"numeric",month:"short"}));keys.push([s.toISOString().slice(0,10),e.toISOString().slice(0,10)]);}}
-  else{const mn=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Ags","Sep","Okt","Nov","Des"],yr=now.getFullYear();for(let mo=0;mo<12;mo++){labels.push(mn[mo]);keys.push([`${yr}-${String(mo+1).padStart(2,"0")}-01`,`${yr}-${String(mo+1).padStart(2,"0")}-31`]);}}
+  const y=$("fltYear")?$("fltYear").value:"",mo=$("fltMonth")?$("fltMonth").value:"",dy=$("fltDay")?$("fltDay").value:"";
+  const mn=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Ags","Sep","Okt","Nov","Des"];
+  let labels=[],keys=[];
+  if(y){
+    const yr=+y;
+    if(mo){
+      const m=+mo;
+      if(dy){const key=`${yr}-${String(m).padStart(2,"0")}-${String(dy).padStart(2,"0")}`;labels=[`${dy} ${mn[m-1]} ${yr}`];keys=[[key,key]];}
+      else{const dim=new Date(yr,m,0).getDate();for(let d=1;d<=dim;d++){labels.push(String(d));const k=`${yr}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;keys.push([k,k]);}}
+    }else{for(let m=0;m<12;m++){labels.push(mn[m]);keys.push([`${yr}-${String(m+1).padStart(2,"0")}-01`,`${yr}-${String(m+1).padStart(2,"0")}-31`]);}}
+  }else{
+    const now=new Date();
+    if(period==="harian"){for(let i=6;i>=0;i--){const x=new Date(now);x.setDate(x.getDate()-i);labels.push(x.toLocaleDateString("id-ID",{weekday:"short"}));keys.push([x.toISOString().slice(0,10),x.toISOString().slice(0,10)]);}}
+    else if(period==="mingguan"){for(let i=5;i>=0;i--){const e=new Date(now);e.setDate(e.getDate()-i*7);const s=new Date(e);s.setDate(s.getDate()-6);labels.push(e.toLocaleDateString("id-ID",{day:"numeric",month:"short"}));keys.push([s.toISOString().slice(0,10),e.toISOString().slice(0,10)]);}}
+    else{const yr=now.getFullYear();for(let m=0;m<12;m++){labels.push(mn[m]);keys.push([`${yr}-${String(m+1).padStart(2,"0")}-01`,`${yr}-${String(m+1).padStart(2,"0")}-31`]);}}
+  }
   const inn=keys.map(([s,e])=>tx.filter(t=>t.type==="masuk"&&t.date>=s&&t.date<=e).reduce((a,t)=>a+t.amt,0));
   const out=keys.map(([s,e])=>tx.filter(t=>t.type==="keluar"&&t.date>=s&&t.date<=e).reduce((a,t)=>a+t.amt,0));
   return {labels,inn,out};
@@ -448,17 +498,24 @@ function openDetail(kind){
     b.querySelectorAll(".delx").forEach(btn=>btn.onclick=()=>delTx(btn.dataset.id));
   }
   else if(kind==="tabungan"){
-    t.textContent="Riwayat Tabungan";
+    t.textContent="Tabungan";
     const list=[...savings].sort((a,b)=>new Date(b.date)-new Date(a.date));
-    b.innerHTML=`<div class="dsum"><div class="k">Total tabungan<b class="lime">${rp(sumSav())}</b></div><div class="k">Jumlah setoran<b>${list.length}</b></div></div>
-      <div class="field"><label>Ambil dari pos (saldo pos akan berkurang)</label><select id="sv_src">${posOptions("")}</select></div>
-      <div class="addrow"><input id="sv_amt" class="money" type="text" inputmode="numeric" placeholder="Rp 0"/><input id="sv_date" type="date" value="${new Date().toISOString().slice(0,10)}"/><input id="sv_note" type="text" placeholder="Catatan"/><button class="btn btn-lime btn-sm" id="sv_add">+ Nabung</button></div>
-      <div class="dlist">${list.length?list.map(x=>{const pn=x.src?posName(x.src):null;return `<div class="drow"><div class="di in">🐖</div><div class="dm"><div class="t">${esc(x.note||"Setoran")}</div><div class="s">${dstr(x.date)}${pn?' · dari '+esc(pn):''}</div></div><div class="da lime">+${rp(x.amt)}</div><button class="delx" data-id="${x.id}">✕</button></div>`;}).join(""):'<div class="empty">Belum ada setoran.</div>'}</div>`;
+    const totalIn=savings.filter(x=>x.type!=="out").reduce((s,x)=>s+x.amt,0);
+    const totalOut=savings.filter(x=>x.type==="out").reduce((s,x)=>s+x.amt,0);
+    b.innerHTML=`<div class="dsum"><div class="k">Saldo tabungan<b class="lime">${rp(sumSav())}</b></div><div class="k">Total ditabung<b>${rp(totalIn)}</b></div><div class="k">Total diambil<b class="red">${rp(totalOut)}</b></div></div>
+      <div class="seg" style="margin-bottom:14px"><button type="button" id="sv_tin">↑ Nabung</button><button type="button" id="sv_tout">↓ Tarik</button></div>
+      <div class="field"><label id="sv_srcLabel">Ambil dari pos (saldo pos berkurang)</label><select id="sv_src">${posOptions("")}</select></div>
+      <div class="addrow"><input id="sv_amt" class="money" type="text" inputmode="numeric" placeholder="Rp 0"/><input id="sv_date" type="date" value="${new Date().toISOString().slice(0,10)}"/><input id="sv_note" type="text" placeholder="Catatan"/><button class="btn btn-lime btn-sm" id="sv_add">Nabung</button></div>
+      <div class="dlist">${list.length?list.map(x=>{const isOut=x.type==="out";const p=x.pos||x.src;const pn=p?posName(p):null;return `<div class="drow"><div class="di ${isOut?'out':'in'}">${isOut?'↓':'🐖'}</div><div class="dm"><div class="t">${esc(x.note||(isOut?'Tarik tabungan':'Setoran'))}</div><div class="s">${dstr(x.date)}${pn?(isOut?' · ke ':' · dari ')+esc(pn):''}</div></div><div class="da ${isOut?'red':'lime'}">${isOut?'−':'+'}${rp(x.amt)}</div><button class="delx" data-id="${x.id}">✕</button></div>`;}).join(""):'<div class="empty">Belum ada transaksi tabungan.</div>'}</div>`;
+    let svType="in";
+    const setSvType=v=>{svType=v;$("sv_tin").className=v==="in"?"on-in":"";$("sv_tout").className=v==="out"?"on-out":"";
+      $("sv_srcLabel").textContent=v==="in"?"Ambil dari pos (saldo pos berkurang)":"Masuk ke pos (saldo pos bertambah)";$("sv_add").textContent=v==="in"?"Nabung":"Tarik";};
+    $("sv_tin").onclick=()=>setSvType("in");$("sv_tout").onclick=()=>setSvType("out");setSvType("in");
     $("sv_add").onclick=async()=>{const a=parseRp($("sv_amt").value);if(!a||a<=0){$("sv_amt").focus();return;}
-      const src=$("sv_src").value||null;savings.push({id:uid(),amt:a,date:$("sv_date").value,note:$("sv_note").value.trim(),src});
-      if(src)adjWallet(src,-a);await saveAll();render();openDetail("tabungan");};
-    b.querySelectorAll(".delx").forEach(btn=>btn.onclick=async()=>{const s=savings.find(x=>x.id===btn.dataset.id);if(s&&s.src)adjWallet(s.src,+s.amt);
-      savings=savings.filter(x=>x.id!==btn.dataset.id);await saveAll();render();openDetail("tabungan");});
+      const pos=$("sv_src").value||null;savings.push({id:uid(),type:svType,amt:a,date:$("sv_date").value,note:$("sv_note").value.trim(),pos});
+      if(pos)adjWallet(pos,svType==="in"?-a:+a);await saveAll();render();openDetail("tabungan");};
+    b.querySelectorAll(".delx").forEach(btn=>btn.onclick=async()=>{const s=savings.find(x=>x.id===btn.dataset.id);const p=s.pos||s.src;
+      if(s&&p)adjWallet(p,s.type==="out"?-s.amt:+s.amt);savings=savings.filter(x=>x.id!==btn.dataset.id);await saveAll();render();openDetail("tabungan");});
   }
   else if(kind==="angsuran"){
     t.textContent="Angsuran / Cicilan";
@@ -531,6 +588,7 @@ $("balanceCard").onclick=()=>openDetail("wallet");
 $("viewAll").onclick=()=>openDetail("all");
 document.querySelectorAll("[data-detail]").forEach(c=>c.onclick=()=>openDetail(c.dataset.detail));
 $("periodToggle").querySelectorAll("button").forEach(bb=>bb.onclick=()=>{period=bb.dataset.p;$("periodToggle").querySelectorAll("button").forEach(x=>x.classList.remove("active"));bb.classList.add("active");renderChart();});
+["fltYear","fltMonth","fltDay"].forEach(id=>{const el=$(id);if(el)el.onchange=()=>renderChart();});
 
 /* ---------- TEMA (siang/malam) ---------- */
 function getTheme(){try{return localStorage.getItem("theme")||"dark";}catch(e){return "dark";}}
@@ -610,7 +668,7 @@ $("pfPassSave").onclick=async()=>{const p=$("pfPass").value,p2=$("pfPass2").valu
 
 async function onLoggedIn(session){
   currentUser=session.user;userId=session.user.id;
-  hideAuth();closeProfile();await loadAll();setHeader();render();
+  hideAuth();closeProfile();await loadAll();populateYears();setHeader();render();
 }
 
 /* ---------- START ---------- */

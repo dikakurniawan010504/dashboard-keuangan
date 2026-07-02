@@ -204,6 +204,45 @@
   .eyebtn:hover{background:rgba(10,11,10,.24)}
   .eyebtn svg{width:18px;height:18px}
   #logoutBtn svg{width:16px;height:16px}
+  #laporanBtn svg{width:16px;height:16px}
+  /* Kartu Uang di Luar Tabungan (warna beda dari total) */
+  .cardfull{background:linear-gradient(135deg,#4f7dff,#7c5cff);border:none;color:#fff;box-shadow:0 16px 38px -22px rgba(90,110,255,.75)}
+  .cardfull.clickable:hover{background:linear-gradient(135deg,#5a86ff,#875fff);border:none;filter:brightness(1.03);transform:translateY(-2px)}
+  .cardfull .label{color:rgba(255,255,255,.82)}
+  .cardfull .val{color:#fff}
+  .cardfull .hint{color:rgba(255,255,255,.72);opacity:1}
+  .cardfull .cf-sub{color:rgba(255,255,255,.78)}
+  .cardfull .cf-sub b.lime{color:#dcff6b}
+  .cardfull .cf-sub b.red{color:#ffcccc}
+  /* Ikon warna-warni */
+  .ic.ic-in{background:rgba(198,244,50,.16);color:var(--lime)}
+  .ic.ic-out{background:rgba(255,107,107,.16);color:var(--red)}
+  .ic.ic-save{background:rgba(96,165,250,.18)}
+  .ic.ic-loan{background:rgba(167,139,250,.18)}
+  /* Mini-grafik (sparkline) */
+  .spark{height:30px;margin-top:10px;opacity:.9}
+  .spark svg{width:100%;height:100%;display:block}
+  /* Efek lift kartu */
+  .card.clickable:hover{transform:translateY(-2px)}
+  /* Animasi buka modal & overlay */
+  @keyframes popIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .overlay.open{animation:fadeIn .18s ease}
+  .overlay.open .modal{animation:popIn .24s cubic-bezier(.2,.7,.3,1)}
+  .profilegate.open,.laporangate.open{animation:fadeIn .2s ease}
+  /* Halaman Laporan */
+  .laporangate{position:fixed;inset:0;background:var(--bg);z-index:80;display:none;overflow:auto;padding:20px}
+  .laporangate.open{display:block}
+  .lapwrap{max-width:1000px;margin:0 auto}
+  .lapgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.lapgrid{grid-template-columns:1fr}}
+  .lapcard{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px}
+  .lapcard h3{font-size:14px;font-weight:700;margin-bottom:14px}
+  .lapchart{height:240px;position:relative}
+  .lapstat{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+  .lapstat .s{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .lapstat .s .l{font-size:12px;color:var(--muted)} .lapstat .s .v{font-size:18px;font-weight:800;margin-top:5px}
+</style>
   .cardfull{margin-top:14px}
   .cf-row{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
   .cf-sub{display:flex;gap:20px;font-size:12px;color:var(--muted);text-align:right}
@@ -241,6 +280,7 @@
     <button class="btn btn-ghost" id="themeBtn" title="Ganti mode siang/malam">🌙</button>
     <button class="btn btn-ghost" id="addInBtn">↑ Pemasukan</button>
     <button class="btn btn-lime" id="addOutBtn">↓ Pengeluaran</button>
+    <button class="btn btn-ghost" id="laporanBtn" title="Laporan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Laporan</button>
     <button class="btn btn-ghost" id="logoutBtn" title="Keluar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Keluar</button>
   </div>
 </header>
@@ -260,10 +300,10 @@
       <div class="hint">Otomatis dari Pemasukan − Pengeluaran · ketuk untuk lihat transaksi →</div>
     </div>
     <div class="summary">
-      <div class="card clickable" data-detail="masuk"><div class="ic">↑</div><div class="label">Uang Masuk</div><div class="val lime" id="inVal">Rp 0</div><div class="hint">Ketuk untuk rincian →</div></div>
-      <div class="card clickable" data-detail="keluar"><div class="ic">↓</div><div class="label">Uang Keluar</div><div class="val red" id="outVal">Rp 0</div><div class="hint">Ketuk untuk rincian →</div></div>
-      <div class="card clickable" data-detail="tabungan"><div class="ic">🐖</div><div class="label">Total Tabungan</div><div class="val" id="savVal">Rp 0</div><div class="hint">Ketuk untuk riwayat →</div></div>
-      <div class="card clickable" data-detail="angsuran"><div class="ic">📄</div><div class="label">Sisa Angsuran</div><div class="val" id="loanVal">Rp 0</div><div class="hint">Ketuk untuk rincian →</div></div>
+      <div class="card clickable" data-detail="masuk"><div class="ic ic-in">↑</div><div class="label">Uang Masuk</div><div class="val lime" id="inVal">Rp 0</div><div class="spark" id="sparkIn"></div><div class="hint">Ketuk untuk rincian →</div></div>
+      <div class="card clickable" data-detail="keluar"><div class="ic ic-out">↓</div><div class="label">Uang Keluar</div><div class="val red" id="outVal">Rp 0</div><div class="spark" id="sparkOut"></div><div class="hint">Ketuk untuk rincian →</div></div>
+      <div class="card clickable" data-detail="tabungan"><div class="ic ic-save">🐖</div><div class="label">Total Tabungan</div><div class="val" id="savVal">Rp 0</div><div class="hint">Ketuk untuk riwayat →</div></div>
+      <div class="card clickable" data-detail="angsuran"><div class="ic ic-loan">📄</div><div class="label">Sisa Angsuran</div><div class="val" id="loanVal">Rp 0</div><div class="hint">Ketuk untuk rincian →</div></div>
     </div>
   </div>
   <div>
@@ -320,6 +360,20 @@
     <div class="pffooter">
       <div class="pff-title">Aplikasi Keuangan</div>
       <div class="pff-sub">by Dika Kurniawan &middot; &copy; 2026</div>
+    </div>
+  </div>
+</div>
+
+<!-- HALAMAN LAPORAN -->
+<div class="laporangate" id="laporanGate">
+  <div class="lapwrap">
+    <div class="pfhead"><button class="xclose" id="lapBack">←</button><h2>Laporan Keuangan</h2></div>
+    <div class="lapstat" id="lapStat"></div>
+    <div class="lapgrid">
+      <div class="lapcard"><h3>Arus Kas per Bulan (tahun ini)</h3><div class="lapchart"><canvas id="lapCash"></canvas></div></div>
+      <div class="lapcard"><h3>Tren Saldo Bersih Kumulatif</h3><div class="lapchart"><canvas id="lapNet"></canvas></div></div>
+      <div class="lapcard"><h3>Pengeluaran per Kategori</h3><div class="lapchart"><canvas id="lapExp"></canvas></div></div>
+      <div class="lapcard"><h3>Pemasukan per Kategori</h3><div class="lapchart"><canvas id="lapInc"></canvas></div></div>
     </div>
   </div>
 </div>
@@ -406,15 +460,28 @@ const loanPaid=l=>l.payments.reduce((s,p)=>s+p.amt,0);
 const loanRem=l=>Math.max(0,l.total-loanPaid(l));
 const sumRem=()=>loans.reduce((s,l)=>s+loanRem(l),0);
 
+function animAmt(el,to){
+  if(!el)return;
+  if(balanceHidden){el.textContent="Rp ••••••";el._val=to;return;}
+  const from=(typeof el._val==="number")?el._val:0;el._val=to;
+  if(from===to){el.textContent=rp(to);return;}
+  const dur=520,st=performance.now(),ease=t=>1-Math.pow(1-t,3);
+  (function step(now){const p=Math.min(1,(now-st)/dur);el.textContent=rp(from+(to-from)*ease(p));if(p<1)requestAnimationFrame(step);})(st);
+}
+function monthlySeries(type){const now=new Date();const arr=[];for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const y=d.getFullYear(),m=d.getMonth();const s=`${y}-${String(m+1).padStart(2,"0")}-01`,e=`${y}-${String(m+1).padStart(2,"0")}-31`;arr.push(tx.filter(t=>t.type===type&&t.date>=s&&t.date<=e).reduce((a,t)=>a+t.amt,0));}return arr;}
+function sparkSVG(data,color){const w=100,h=30,max=Math.max(...data,1),min=Math.min(...data,0),range=(max-min)||1;const pts=data.map((v,i)=>`${((i/(data.length-1))*w).toFixed(1)},${(h-((v-min)/range)*(h-4)-2).toFixed(1)}`);return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;}
 function render(){
-  $("balanceVal").textContent=showAmt(sumWall()+sumSav());
-  $("outsideVal").textContent=showAmt(sumWall());
-  $("cfIn").textContent=showAmt(sumTx("masuk"));
-  $("cfOut").textContent=showAmt(sumTx("keluar"));
-  $("inVal").textContent=showAmt(sumTx("masuk"));
-  $("outVal").textContent=showAmt(sumTx("keluar"));
-  $("savVal").textContent=showAmt(sumSav());
-  $("loanVal").textContent=showAmt(sumRem());
+  animAmt($("balanceVal"),sumWall()+sumSav());
+  animAmt($("outsideVal"),sumWall());
+  animAmt($("cfIn"),sumTx("masuk"));
+  animAmt($("cfOut"),sumTx("keluar"));
+  animAmt($("inVal"),sumTx("masuk"));
+  animAmt($("outVal"),sumTx("keluar"));
+  animAmt($("savVal"),sumSav());
+  animAmt($("loanVal"),sumRem());
+  const lime=cssVar('--lime')||'#c6f432',red=cssVar('--red')||'#ff6b6b';
+  if($("sparkIn"))$("sparkIn").innerHTML=balanceHidden?"":sparkSVG(monthlySeries("masuk"),lime);
+  if($("sparkOut"))$("sparkOut").innerHTML=balanceHidden?"":sparkSVG(monthlySeries("keluar"),red);
   renderTx();renderChart();
 }
 function renderTx(){
@@ -572,6 +639,38 @@ function openDetail(kind){
   $("detailOverlay").classList.add("open");
 }
 
+/* ---------- Laporan ---------- */
+let lapCharts=[];
+function destroyLap(){lapCharts.forEach(c=>{try{c.destroy();}catch(e){}});lapCharts=[];}
+function aggCat(type){const o={};tx.filter(t=>t.type===type).forEach(t=>{o[t.cat]=(o[t.cat]||0)+t.amt;});return o;}
+function lapBase(muted,line){return {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:muted,font:{size:11}}},tooltip:{callbacks:{label:c=>c.dataset.label+": "+rp(c.parsed.y)}}},scales:{x:{grid:{display:false},ticks:{color:muted,font:{size:10}}},y:{grid:{color:line},ticks:{color:muted,font:{size:10},callback:v=>v>=1e6?(v/1e6)+"jt":v>=1e3?(v/1e3)+"rb":v}}}};}
+function lapDough(muted){return {responsive:true,maintainAspectRatio:false,cutout:"58%",plugins:{legend:{position:"right",labels:{color:muted,font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:c=>c.label+": "+rp(c.parsed)}}}};}
+function openLaporan(){
+  destroyLap();
+  const lime=cssVar('--lime')||'#c6f432',red=cssVar('--red')||'#ff6b6b',muted=cssVar('--muted')||'#8c918a',line=cssVar('--line')||'#262a26';
+  const mn=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Ags","Sep","Okt","Nov","Des"],yr=new Date().getFullYear();
+  const inM=[],outM=[];
+  for(let m=0;m<12;m++){const s=`${yr}-${String(m+1).padStart(2,"0")}-01`,e=`${yr}-${String(m+1).padStart(2,"0")}-31`;
+    inM.push(tx.filter(t=>t.type==="masuk"&&t.date>=s&&t.date<=e).reduce((a,t)=>a+t.amt,0));
+    outM.push(tx.filter(t=>t.type==="keluar"&&t.date>=s&&t.date<=e).reduce((a,t)=>a+t.amt,0));}
+  const totIn=inM.reduce((a,b)=>a+b,0),totOut=outM.reduce((a,b)=>a+b,0),netv=totIn-totOut;
+  $("lapStat").innerHTML=`<div class="s"><div class="l">Pemasukan ${yr}</div><div class="v lime">${rp(totIn)}</div></div>
+    <div class="s"><div class="l">Pengeluaran ${yr}</div><div class="v red">${rp(totOut)}</div></div>
+    <div class="s"><div class="l">Selisih</div><div class="v ${netv>=0?'lime':'red'}">${rp(netv)}</div></div>
+    <div class="s"><div class="l">Saldo Tabungan</div><div class="v">${rp(sumSav())}</div></div>`;
+  $("laporanGate").classList.add("open");
+  setTimeout(()=>{
+    lapCharts.push(new Chart($("lapCash"),{type:"bar",data:{labels:mn,datasets:[{label:"Pemasukan",data:inM,backgroundColor:lime,borderRadius:5,maxBarThickness:16},{label:"Pengeluaran",data:outM,backgroundColor:red,borderRadius:5,maxBarThickness:16}]},options:lapBase(muted,line)}));
+    let cum=0;const netArr=inM.map((v,i)=>{cum+=v-outM[i];return cum;});
+    lapCharts.push(new Chart($("lapNet"),{type:"line",data:{labels:mn,datasets:[{label:"Saldo bersih",data:netArr,borderColor:"#4f7dff",backgroundColor:"rgba(79,125,255,.12)",fill:true,tension:.35,pointRadius:2.5,pointBackgroundColor:"#4f7dff"}]},options:lapBase(muted,line)}));
+    const palette=["#ff6b6b","#f6a23c","#f4d03f","#7c5cff","#4f7dff","#22c3a6","#c6f432","#ff8fb1","#a78bfa","#60a5fa","#34d399","#fb7185"];
+    const exp=aggCat("keluar"),inc=aggCat("masuk");
+    lapCharts.push(new Chart($("lapExp"),{type:"doughnut",data:{labels:Object.keys(exp),datasets:[{data:Object.values(exp),backgroundColor:palette,borderWidth:0}]},options:lapDough(muted)}));
+    lapCharts.push(new Chart($("lapInc"),{type:"doughnut",data:{labels:Object.keys(inc),datasets:[{data:Object.values(inc),backgroundColor:palette,borderWidth:0}]},options:lapDough(muted)}));
+  },60);
+}
+function closeLaporan(){$("laporanGate").classList.remove("open");destroyLap();}
+
 /* ---------- events dashboard ---------- */
 $("addInBtn").onclick=()=>openTx("masuk");
 $("addOutBtn").onclick=()=>openTx("keluar");
@@ -583,6 +682,8 @@ attachMoney($("fAmt"));
 $("overlay").onclick=e=>{if(e.target.id==="overlay")closeTx();};
 $("dClose").onclick=closeDetail;$("detailOverlay").onclick=e=>{if(e.target.id==="detailOverlay")closeDetail();};
 $("balanceCard").onclick=()=>openDetail("ringkasan");
+$("laporanBtn").onclick=openLaporan;
+$("lapBack").onclick=closeLaporan;
 $("viewAll").onclick=()=>openDetail("all");
 document.querySelectorAll("[data-detail]").forEach(c=>c.onclick=()=>openDetail(c.dataset.detail));
 $("periodToggle").querySelectorAll("button").forEach(bb=>bb.onclick=()=>{period=bb.dataset.p;$("periodToggle").querySelectorAll("button").forEach(x=>x.classList.remove("active"));bb.classList.add("active");renderChart();});
@@ -625,7 +726,7 @@ $("signupBtn").onclick=async()=>{
   if(data.session)authMsg("Akun dibuat, sedang masuk...",true);
   else authMsg("Akun dibuat! Cek email kamu untuk konfirmasi, lalu klik Masuk.",true);
 };
-$("logoutBtn").onclick=async()=>{if(supa)await supa.auth.signOut();};
+$("logoutBtn").onclick=async()=>{closeLaporan();closeProfile();if(supa)await supa.auth.signOut();};
 
 function initials(n){if(!n)return"👤";const p=n.trim().split(/\s+/);return((p[0][0]||"")+(p[1]?p[1][0]:"")).toUpperCase();}
 function renderAvatar(el){if(userAvatar){el.innerHTML=`<img src="${userAvatar}" alt="foto profil"/>`;}else{el.textContent=initials(userName);}}

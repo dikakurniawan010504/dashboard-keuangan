@@ -20,7 +20,7 @@
   .muted{color:var(--muted)} .lime{color:var(--lime)} .red{color:var(--red)}
 
   header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:12px;flex-wrap:wrap}
-  .greet{display:flex;align-items:center;gap:14px}
+  .greet{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--lime),var(--lime-dim));display:grid;place-items:center;font-weight:800;color:#0a0b0a;font-size:18px;overflow:hidden;cursor:pointer}
   .avatar img{width:100%;height:100%;object-fit:cover;display:block}
   .greet small{display:block;color:var(--muted);font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -196,11 +196,11 @@
   .pfmsg{font-size:13px;margin-top:8px;color:var(--lime);min-height:16px}
   .pfmsg.err{color:var(--red)}
   /* Brandmark & kartu penuh & filter statistik */
-  .brandmark{display:flex;align-items:center;gap:12px;margin-left:4px}
-  .bm-line{width:1px;height:36px;background:linear-gradient(180deg,transparent,var(--line) 20%,var(--line) 80%,transparent)}
-  .bm-text{font-family:Georgia,"Times New Roman",serif;font-style:italic;font-size:13.5px;color:var(--muted);letter-spacing:.3px;white-space:nowrap}
-  .bm-text i{font-style:italic;font-weight:600;background:linear-gradient(90deg,var(--lime),var(--lime-dim));-webkit-background-clip:text;background-clip:text;color:transparent}
-  @media(max-width:680px){.brandmark{display:none}}
+  .brandmark{display:flex;align-items:center;gap:9px;margin-left:4px}
+  .bm-line{width:1px;height:28px;background:linear-gradient(180deg,transparent,var(--line) 20%,var(--line) 80%,transparent)}
+  .bm-text{font-family:Georgia,"Times New Roman",serif;font-style:italic;font-size:11px;color:var(--muted);letter-spacing:.2px;white-space:nowrap;font-weight:400;opacity:.85}
+  .bm-text i{font-style:italic;font-weight:400;background:linear-gradient(90deg,var(--lime),var(--lime-dim));-webkit-background-clip:text;background-clip:text;color:transparent}
+  @media(max-width:680px){.bm-line{display:none}.brandmark{margin-left:2px}.bm-text{font-size:9.5px}}
   .cardfull{margin-top:14px}
   .cf-row{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
   .cf-sub{display:flex;gap:20px;font-size:12px;color:var(--muted);text-align:right}

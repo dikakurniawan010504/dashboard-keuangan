@@ -148,6 +148,28 @@
   .authmsg{font-size:13px;color:var(--red);min-height:18px;margin-bottom:8px;text-align:left;line-height:1.4}
   .authmsg.ok{color:var(--lime)}
   .loading{color:var(--muted);font-size:14px}
+  .btn-danger{background:var(--red-dim);color:var(--red);border:1px solid var(--red)}
+  .btn-danger:hover{filter:brightness(1.08)}
+  #themeBtn{padding:11px 13px;font-size:16px;line-height:1}
+
+  /* ===== MODE SIANG (light) — lembut, tidak putih menyilaukan ===== */
+  html[data-theme="light"]{
+    --bg:#e7ebe3;          /* abu kehijauan lembut, bukan putih */
+    --panel:#f7f9f4;       /* kartu */
+    --panel-2:#eaeee4;     /* input/toggle */
+    --line:#d2d8ca;
+    --lime:#a9d626;        /* lime sedikit lebih pekat agar kebaca di terang */
+    --lime-dim:#8fae2a;
+    --text:#1b1f18;
+    --muted:#5f665a;
+    --red:#d64545;
+    --red-dim:#f7e2e2;
+  }
+  html[data-theme="light"] body{background:var(--bg)}
+  html[data-theme="light"] .card{box-shadow:0 2px 8px -4px rgba(0,0,0,.12)}
+  html[data-theme="light"] .stats,
+  html[data-theme="light"] .tx-panel{box-shadow:0 2px 10px -6px rgba(0,0,0,.12)}
+  html[data-theme="light"] .balance{box-shadow:0 14px 34px -20px rgba(140,170,40,.7)}
 </style>
 </head>
 <body>
@@ -174,6 +196,7 @@
     <div><small id="greetLine">Selamat datang</small><h1>Keuangan Saya</h1></div>
   </div>
   <div class="head-actions">
+    <button class="btn btn-ghost" id="themeBtn" title="Ganti mode siang/malam">🌙</button>
     <button class="btn btn-ghost" id="addInBtn">↑ Pemasukan</button>
     <button class="btn btn-lime" id="addOutBtn">↓ Pengeluaran</button>
     <button class="btn btn-ghost" id="logoutBtn">Keluar</button>
@@ -266,19 +289,12 @@ async function saveAll(){
 }
 
 function seed(){
-  const now=new Date();const d=k=>{const x=new Date(now);x.setDate(x.getDate()-k);return x.toISOString().slice(0,10);};
-  const m=k=>{const x=new Date(now);x.setMonth(x.getMonth()-k);return x.toISOString().slice(0,10);};
-  wallets=[{id:"w1",name:"Uang Tunai",amount:300000},{id:"w2",name:"Rekening Bank",amount:4200000},{id:"w3",name:"Uang Jajan",amount:750000}];
-  tx=[
-    {id:uid(),type:"masuk",cat:"Gaji",note:"Gaji bulanan",amt:8500000,date:d(1),pos:"w2"},
-    {id:uid(),type:"keluar",cat:"Makan & Minum",note:"Belanja mingguan",amt:650000,date:d(2),pos:"w1"},
-    {id:uid(),type:"keluar",cat:"Transportasi",note:"Isi bensin",amt:200000,date:d(4),pos:"w1"},
-    {id:uid(),type:"masuk",cat:"Bisnis Sampingan",note:"Penjualan online",amt:1200000,date:d(9),pos:"w2"},
-    {id:uid(),type:"keluar",cat:"Tagihan",note:"Listrik & internet",amt:750000,date:m(1),pos:"w2"},
-    {id:uid(),type:"masuk",cat:"Bonus",note:"Bonus kinerja",amt:3000000,date:m(2),pos:"w2"},
-  ];
-  savings=[{id:uid(),amt:1500000,date:d(3),note:"Setor rutin",src:"w2"},{id:uid(),amt:2000000,date:m(3),note:"Dana darurat",src:"w2"}];
-  loans=[{id:uid(),name:"Cicilan Motor",total:15000000,payments:[{id:uid(),amt:1250000,date:d(6),src:"w2"},{id:uid(),amt:1250000,date:m(1),src:"w2"}]}];
+  // Akun baru dimulai kosong (semua nol)
+  tx=[];wallets=[];savings=[];loans=[];
+}
+async function resetAll(){
+  if(!confirm("Kosongkan SEMUA data (transaksi, pos, tabungan, angsuran)?\nTindakan ini tidak bisa dibatalkan."))return;
+  tx=[];wallets=[];savings=[];loans=[];await saveAll();closeDetail();render();
 }
 
 const sumTx=t=>tx.filter(x=>x.type===t).reduce((s,x)=>s+x.amt,0);
@@ -322,13 +338,17 @@ function bucket(){
   const out=keys.map(([s,e])=>tx.filter(t=>t.type==="keluar"&&t.date>=s&&t.date<=e).reduce((a,t)=>a+t.amt,0));
   return {labels,inn,out};
 }
+function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
 function renderChart(){
   const {labels,inn,out}=bucket();
-  const data={labels,datasets:[{label:"Pemasukan",data:inn,backgroundColor:"#c6f432",borderRadius:6,maxBarThickness:20},{label:"Pengeluaran",data:out,backgroundColor:"#ff6b6b",borderRadius:6,maxBarThickness:20}]};
+  const lime=cssVar('--lime')||'#c6f432',red=cssVar('--red')||'#ff6b6b';
+  const muted=cssVar('--muted')||'#8c918a',line=cssVar('--line')||'#262a26';
+  const panel2=cssVar('--panel-2')||'#1b1e1b',text=cssVar('--text')||'#f4f6f2';
+  const data={labels,datasets:[{label:"Pemasukan",data:inn,backgroundColor:lime,borderRadius:6,maxBarThickness:20},{label:"Pengeluaran",data:out,backgroundColor:red,borderRadius:6,maxBarThickness:20}]};
   if(chart){chart.data=data;chart.update();return;}
   chart=new Chart($("chart").getContext("2d"),{type:"bar",data,options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+": "+rp(c.parsed.y)},backgroundColor:"#1b1e1b",borderColor:"#262a26",borderWidth:1,padding:10,titleColor:"#f4f6f2",bodyColor:"#c6f432"}},
-    scales:{x:{grid:{display:false},ticks:{color:"#8c918a",font:{size:11}}},y:{grid:{color:"#20241f"},ticks:{color:"#8c918a",font:{size:11},callback:v=>v>=1e6?(v/1e6)+"jt":v>=1e3?(v/1e3)+"rb":v}}}}});
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+": "+rp(c.parsed.y)},backgroundColor:panel2,borderColor:line,borderWidth:1,padding:10,titleColor:text,bodyColor:lime}},
+    scales:{x:{grid:{display:false},ticks:{color:muted,font:{size:11}}},y:{grid:{color:line},ticks:{color:muted,font:{size:11},callback:v=>v>=1e6?(v/1e6)+"jt":v>=1e3?(v/1e3)+"rb":v}}}}});
 }
 
 function openTx(type){curType=type;$("modalTitle").textContent=type==="masuk"?"Tambah Pemasukan":"Tambah Pengeluaran";
@@ -399,7 +419,9 @@ function openDetail(kind){
     b.innerHTML=`<div class="dsum"><div class="k">Total keuangan<b class="lime">${rp(sumWall())}</b></div><div class="k">Jumlah pos<b>${wallets.length}</b></div></div>
       <div class="note">Ini saldo yang kamu isi sendiri. Nabung & bayar angsuran otomatis mengurangi pos di sini.</div>
       <div class="dlist">${wallets.map(w=>`<div class="wrow"><input class="wn" value="${esc(w.name)}" data-name="${w.id}"/><input class="wa" type="number" value="${w.amount}" data-amt="${w.id}"/><button class="delx" data-del="${w.id}">✕</button></div>`).join("")}</div>
-      <div class="addrow" style="margin-top:14px"><input id="w_name" type="text" placeholder="Nama pos (mis. Dompet)"/><input id="w_amt" type="number" placeholder="Saldo (Rp)"/><button class="btn btn-lime btn-sm" id="w_add">+ Pos</button></div>`;
+      <div class="addrow" style="margin-top:14px"><input id="w_name" type="text" placeholder="Nama pos (mis. Dompet)"/><input id="w_amt" type="number" placeholder="Saldo (Rp)"/><button class="btn btn-lime btn-sm" id="w_add">+ Pos</button></div>
+      <div style="margin-top:22px;border-top:1px solid var(--line);padding-top:16px"><button class="btn btn-danger btn-sm" id="resetBtn">🗑 Kosongkan semua data</button><div class="note" style="margin-top:8px">Menghapus seluruh transaksi, pos, tabungan, dan angsuran di akun ini.</div></div>`;
+    $("resetBtn").onclick=resetAll;
     $("w_add").onclick=async()=>{const n=$("w_name").value.trim(),a=parseFloat($("w_amt").value)||0;if(!n){$("w_name").focus();return;}
       wallets.push({id:uid(),name:n,amount:a});await saveAll();render();openDetail("wallet");};
     b.querySelectorAll("[data-name]").forEach(i=>i.onchange=async()=>{const w=wallets.find(x=>x.id===i.dataset.name);w.name=i.value.trim()||"Pos";await saveAll();render();});
@@ -422,6 +444,18 @@ $("balanceCard").onclick=()=>openDetail("wallet");
 $("viewAll").onclick=()=>openDetail("all");
 document.querySelectorAll("[data-detail]").forEach(c=>c.onclick=()=>openDetail(c.dataset.detail));
 $("periodToggle").querySelectorAll("button").forEach(bb=>bb.onclick=()=>{period=bb.dataset.p;$("periodToggle").querySelectorAll("button").forEach(x=>x.classList.remove("active"));bb.classList.add("active");renderChart();});
+
+/* ---------- TEMA (siang/malam) ---------- */
+function getTheme(){try{return localStorage.getItem("theme")||"dark";}catch(e){return "dark";}}
+function applyTheme(t,rebuild){
+  document.documentElement.setAttribute("data-theme",t);
+  try{localStorage.setItem("theme",t);}catch(e){}
+  $("themeBtn").textContent = t==="light" ? "🌙" : "☀️";  // ikon = mode tujuan saat diklik
+  $("themeBtn").title = t==="light" ? "Ganti ke mode malam" : "Ganti ke mode siang";
+  if(rebuild&&chart){chart.destroy();chart=null;renderChart();}
+}
+applyTheme(getTheme(),false); // set tema sedini mungkin
+$("themeBtn").onclick=()=>{const cur=document.documentElement.getAttribute("data-theme");applyTheme(cur==="light"?"dark":"light",true);};
 
 /* ---------- LOGIN / AUTH ---------- */
 function authMsg(msg,ok){const el=$("authMsg");el.textContent=msg||"";el.className="authmsg"+(ok?" ok":"");}

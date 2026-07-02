@@ -196,11 +196,10 @@
   .pfmsg{font-size:13px;margin-top:8px;color:var(--lime);min-height:16px}
   .pfmsg.err{color:var(--red)}
   /* Brandmark & kartu penuh & filter statistik */
-  .brandmark{display:flex;align-items:center;gap:9px;margin-left:4px}
-  .bm-line{width:1px;height:28px;background:linear-gradient(180deg,transparent,var(--line) 20%,var(--line) 80%,transparent)}
-  .bm-text{font-family:Georgia,"Times New Roman",serif;font-style:italic;font-size:11px;color:var(--muted);letter-spacing:.2px;white-space:nowrap;font-weight:400;opacity:.85}
-  .bm-text i{font-style:italic;font-weight:400;background:linear-gradient(90deg,var(--lime),var(--lime-dim));-webkit-background-clip:text;background-clip:text;color:transparent}
-  @media(max-width:680px){.bm-line{display:none}.brandmark{margin-left:2px}.bm-text{font-size:9.5px}}
+  .brandmark,.bm-line,.bm-text{display:none}
+  .pffooter{text-align:center;padding:20px 0 6px;margin-top:4px}
+  .pff-title{font-size:13px;font-weight:600;letter-spacing:.5px;color:var(--text);opacity:.85}
+  .pff-sub{font-size:11.5px;letter-spacing:.4px;color:var(--muted);margin-top:5px}
   .cardfull{margin-top:14px}
   .cf-row{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
   .cf-sub{display:flex;gap:20px;font-size:12px;color:var(--muted);text-align:right}
@@ -233,7 +232,6 @@
   <div class="greet">
     <div class="avatar" id="avatarEl" title="Buka profil">?</div>
     <div><small id="greetLine">Keuangan Saya</small><h1 id="userNameEl" title="Buka profil" style="cursor:pointer">Kamu</h1></div>
-    <div class="brandmark"><span class="bm-line"></span><span class="bm-text">by&nbsp;<i>dikakurniawan</i></span></div>
   </div>
   <div class="head-actions">
     <button class="btn btn-ghost" id="themeBtn" title="Ganti mode siang/malam">🌙</button>
@@ -314,6 +312,10 @@
         <button class="btn btn-lime btn-sm" id="pfPassSave" style="margin-top:10px">Ganti Password</button>
         <div class="pfmsg" id="pfPassMsg"></div>
       </div>
+    </div>
+    <div class="pffooter">
+      <div class="pff-title">Aplikasi Keuangan</div>
+      <div class="pff-sub">by Dika Kurniawan &middot; &copy; 2026</div>
     </div>
   </div>
 </div>

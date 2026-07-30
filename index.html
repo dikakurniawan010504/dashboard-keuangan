@@ -268,6 +268,10 @@
   .adm .t{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .adm .s{color:var(--muted);font-size:12.5px;margin-top:2px;word-break:break-all}
   .add{color:var(--muted);font-size:12px;white-space:nowrap}
+  .savetoast{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:200;background:var(--panel);border:1px solid var(--line);color:var(--text);font-size:12.5px;padding:9px 15px;border-radius:999px;opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none;box-shadow:0 8px 24px -12px rgba(0,0,0,.5)}
+  .savetoast.show{opacity:1;transform:none}
+  .savetoast.ok{border-color:var(--lime)}
+  .savetoast.err{border-color:var(--red);color:var(--red)}
 </style>
 </head>
 <body>
@@ -469,7 +473,16 @@ async function saveAll(){
   const payload={user_id:userId,data:{tx,wallets,savings,loans,name:userName,avatar:userAvatar,email:(currentUser&&currentUser.email)||""},updated_at:new Date().toISOString()};
   const {error}=await supa.from("dashboards").upsert(payload,{onConflict:"user_id"});
   if(error)console.error("save:",error);
+  return error;
 }
+let saveHideT=null;
+function showSave(state){
+  const el=$("saveToast");if(!el)return;clearTimeout(saveHideT);
+  if(state==="saving"){el.textContent="Menyimpan…";el.className="savetoast show";}
+  else if(state==="saved"){el.textContent="Tersimpan ✓";el.className="savetoast show ok";saveHideT=setTimeout(()=>el.className="savetoast",1100);}
+  else{el.textContent="Gagal simpan — cek koneksi";el.className="savetoast show err";saveHideT=setTimeout(()=>el.className="savetoast",2600);}
+}
+function saveBg(){showSave("saving");saveAll().then(err=>showSave(err?"error":"saved")).catch(()=>showSave("error"));}
 
 function seed(){
   // Akun baru dimulai kosong (semua nol)
@@ -526,7 +539,7 @@ function rowHTML(t){
     <div class="tright"><div class="amt ${isIn?'lime':'red'}">${isIn?'+':'−'}${rp(t.amt)}</div><div class="ty">${isIn?'Pemasukan':'Pengeluaran'}</div></div>
     <button class="delx" data-id="${t.id}" title="Hapus">✕</button></div>`;
 }
-async function delTx(id){tx=tx.filter(x=>x.id!==id);await saveAll();render();if($("detailOverlay").classList.contains("open"))openDetail(window._dk||"masuk");}
+async function delTx(id){tx=tx.filter(x=>x.id!==id);render();if($("detailOverlay").classList.contains("open"))openDetail(window._dk||"masuk");saveBg();}
 
 function populateYears(){
   const sel=$("fltYear");if(!sel)return;const cur=sel.value;
@@ -579,7 +592,7 @@ function fillCats(t){$("fCat").innerHTML=CATS[t].map(c=>`<option>${c}</option>`)
 async function saveTxNew(){
   const amt=parseRp($("fAmt").value);if(!amt||amt<=0){$("fAmt").focus();$("fAmt").style.borderColor="var(--red)";return;}
   tx.push({id:uid(),type:curType,cat:$("fCat").value,note:$("fNote").value.trim(),amt,date:$("fDate").value});
-  await saveAll();closeTx();render();}
+  closeTx();render();saveBg();}
 
 const closeDetail=()=>$("detailOverlay").classList.remove("open");
 function openDetail(kind){
@@ -609,8 +622,8 @@ function openDetail(kind){
     $("sv_tin").onclick=()=>setSvType("in");$("sv_tout").onclick=()=>setSvType("out");setSvType("in");
     $("sv_add").onclick=async()=>{const a=parseRp($("sv_amt").value);if(!a||a<=0){$("sv_amt").focus();return;}
       savings.push({id:uid(),type:svType,amt:a,date:$("sv_date").value,note:$("sv_note").value.trim()});
-      await saveAll();render();openDetail("tabungan");};
-    b.querySelectorAll(".delx").forEach(btn=>btn.onclick=async()=>{savings=savings.filter(x=>x.id!==btn.dataset.id);await saveAll();render();openDetail("tabungan");});
+      render();openDetail("tabungan");saveBg();};
+    b.querySelectorAll(".delx").forEach(btn=>btn.onclick=async()=>{savings=savings.filter(x=>x.id!==btn.dataset.id);render();openDetail("tabungan");saveBg();});
   }
   else if(kind==="angsuran"){
     t.textContent="Angsuran / Cicilan";
@@ -624,13 +637,13 @@ function openDetail(kind){
         <div class="loanpay"><input class="money" type="text" inputmode="numeric" placeholder="Rp 0" data-amt="${l.id}"/><input type="date" value="${new Date().toISOString().slice(0,10)}" data-pdate="${l.id}"/><button class="btn btn-lime btn-sm" data-pay-add="${l.id}">Bayar</button></div></div>`;}).join("")}
       <div class="addrow" style="margin-top:6px"><input id="ln_name" type="text" placeholder="Nama pinjaman baru"/><input id="ln_total" class="money" type="text" inputmode="numeric" placeholder="Total pinjaman (Rp)"/><button class="btn btn-ghost btn-sm" id="ln_add">+ Pinjaman</button></div>`;
     $("ln_add").onclick=async()=>{const n=$("ln_name").value.trim(),tt=parseRp($("ln_total").value);if(!n||!tt||tt<=0){$("ln_name").focus();return;}
-      loans.push({id:uid(),name:n,total:tt,payments:[]});await saveAll();render();openDetail("angsuran");};
+      loans.push({id:uid(),name:n,total:tt,payments:[]});render();openDetail("angsuran");saveBg();};
     b.querySelectorAll("[data-pay-add]").forEach(btn=>btn.onclick=async()=>{const id=btn.dataset.payAdd;
       const a=parseRp(b.querySelector(`[data-amt="${id}"]`).value);const dt=b.querySelector(`[data-pdate="${id}"]`).value;
-      if(!a||a<=0)return;const l=loans.find(x=>x.id===id);l.payments.push({id:uid(),amt:a,date:dt});await saveAll();render();openDetail("angsuran");});
-    b.querySelectorAll("[data-loan]").forEach(btn=>btn.onclick=async()=>{loans=loans.filter(x=>x.id!==btn.dataset.loan);await saveAll();render();openDetail("angsuran");});
+      if(!a||a<=0)return;const l=loans.find(x=>x.id===id);l.payments.push({id:uid(),amt:a,date:dt});render();openDetail("angsuran");saveBg();});
+    b.querySelectorAll("[data-loan]").forEach(btn=>btn.onclick=async()=>{loans=loans.filter(x=>x.id!==btn.dataset.loan);render();openDetail("angsuran");saveBg();});
     b.querySelectorAll("[data-pay]").forEach(btn=>btn.onclick=async()=>{const[lid,pid]=btn.dataset.pay.split(":");const l=loans.find(x=>x.id===lid);
-      l.payments=l.payments.filter(x=>x.id!==pid);await saveAll();render();openDetail("angsuran");});
+      l.payments=l.payments.filter(x=>x.id!==pid);render();openDetail("angsuran");saveBg();});
   }
   else if(kind==="ringkasan"){
     t.textContent="Ringkasan Keuangan";
@@ -657,11 +670,11 @@ function openDetail(kind){
     $("resetNo").onclick=()=>{$("resetConfirm").style.display="none";};
     $("resetYes").onclick=async()=>{
       lastBackup={tx:JSON.parse(JSON.stringify(tx)),savings:JSON.parse(JSON.stringify(savings)),loans:JSON.parse(JSON.stringify(loans))};
-      tx=[];savings=[];loans=[];await saveAll();render();openDetail("ringkasan");
+      tx=[];savings=[];loans=[];render();openDetail("ringkasan");saveBg();
     };
     if($("undoBtn"))$("undoBtn").onclick=async()=>{if(!lastBackup)return;
       tx=lastBackup.tx;savings=lastBackup.savings;loans=lastBackup.loans;lastBackup=null;
-      await saveAll();render();openDetail("ringkasan");};
+      render();openDetail("ringkasan");saveBg();};
   }
   wireMoney($("dBody"));
   $("detailOverlay").classList.add("open");
@@ -793,7 +806,7 @@ function closeProfile(){$("profileGate").classList.remove("open");}
 $("avatarEl").onclick=openProfile;
 $("userNameEl").onclick=openProfile;
 $("pfBack").onclick=closeProfile;
-$("pfNameSave").onclick=async()=>{userName=$("pfName").value.trim();await saveAll();setHeader();$("pfMsg").className="pfmsg";$("pfMsg").textContent="Nama tersimpan ✓";};
+$("pfNameSave").onclick=async()=>{userName=$("pfName").value.trim();setHeader();$("pfMsg").className="pfmsg";$("pfMsg").textContent="Nama tersimpan ✓";saveBg();};
 $("pfPhoto").onchange=e=>{const f=e.target.files[0];if(!f)return;
   const rd=new FileReader();
   rd.onload=()=>{const img=new Image();img.onload=async()=>{
@@ -801,12 +814,12 @@ $("pfPhoto").onchange=e=>{const f=e.target.files[0];if(!f)return;
     const s=Math.min(img.width,img.height),sx=(img.width-s)/2,sy=(img.height-s)/2;
     ctx.drawImage(img,sx,sy,s,s,0,0,256,256);
     userAvatar=c.toDataURL("image/jpeg",0.85);
-    await saveAll();renderAvatar($("pfAvatar"));renderAvatar($("avatarEl"));
+    renderAvatar($("pfAvatar"));renderAvatar($("avatarEl"));saveBg();
     $("pfMsg").className="pfmsg";$("pfMsg").textContent="Foto profil tersimpan ✓";
   };img.src=rd.result;};
   rd.readAsDataURL(f);e.target.value="";
 };
-$("pfPhotoDel").onclick=async()=>{userAvatar=null;await saveAll();renderAvatar($("pfAvatar"));renderAvatar($("avatarEl"));$("pfMsg").className="pfmsg";$("pfMsg").textContent="Foto dihapus.";};
+$("pfPhotoDel").onclick=async()=>{userAvatar=null;renderAvatar($("pfAvatar"));renderAvatar($("avatarEl"));saveBg();$("pfMsg").className="pfmsg";$("pfMsg").textContent="Foto dihapus.";};
 function pfPassMsg(m,ok){const el=$("pfPassMsg");el.textContent=m;el.className="pfmsg"+(ok?"":" err");}
 $("pfPassSave").onclick=async()=>{const p=$("pfPass").value,p2=$("pfPass2").value;
   if(p.length<6){pfPassMsg("Password minimal 6 karakter.");return;}
@@ -836,6 +849,7 @@ async function onLoggedIn(session){
   });
 })();
 </script>
+<div id="saveToast" class="savetoast"></div>
 <script>
 if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
 </script>

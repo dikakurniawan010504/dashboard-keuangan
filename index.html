@@ -300,6 +300,7 @@
     <div><small id="greetLine">Keuangan Saya</small><h1 id="userNameEl" title="Buka profil" style="cursor:pointer">Kamu</h1></div>
   </div>
   <div class="head-actions">
+    <button class="btn btn-ghost" id="lemburBtn" title="Lembur Kerja">⏱️ Lembur</button>
     <button class="btn btn-ghost" id="themeBtn" title="Ganti mode siang/malam">🌙</button>
     <button class="btn btn-ghost" id="addInBtn">↑ Pemasukan</button>
     <button class="btn btn-lime" id="addOutBtn">↓ Pengeluaran</button>
@@ -784,6 +785,7 @@ $("overlay").onclick=e=>{if(e.target.id==="overlay")closeTx();};
 $("dClose").onclick=closeDetail;$("detailOverlay").onclick=e=>{if(e.target.id==="detailOverlay")closeDetail();};
 $("balanceCard").onclick=()=>openDetail("ringkasan");
 $("laporanBtn").onclick=openLaporan;
+$("lemburBtn").onclick=()=>openDetail("lembur");
 $("lapBack").onclick=closeLaporan;
 $("adminBtn").onclick=openAdmin;
 $("adminBack").onclick=closeAdmin;

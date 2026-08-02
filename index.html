@@ -231,6 +231,7 @@
   .ic.ic-out{background:rgba(255,107,107,.16);color:var(--red)}
   .ic.ic-save{background:rgba(96,165,250,.18)}
   .ic.ic-loan{background:rgba(167,139,250,.18)}
+  .ic.ic-lembur{background:rgba(251,191,36,.18)}
   /* Mini-grafik (sparkline) */
   .spark{height:30px;margin-top:10px;opacity:.9}
   .spark svg{width:100%;height:100%;display:block}
@@ -327,6 +328,7 @@
       <div class="card clickable" data-detail="keluar"><div class="ic ic-out">↓</div><div class="label">Uang Keluar</div><div class="val red" id="outVal">Rp 0</div><div class="spark" id="sparkOut"></div><div class="hint">Ketuk untuk rincian →</div></div>
       <div class="card clickable" data-detail="tabungan"><div class="ic ic-save">🐖</div><div class="label">Total Tabungan</div><div class="val" id="savVal">Rp 0</div><div class="hint">Ketuk untuk riwayat →</div></div>
       <div class="card clickable" data-detail="angsuran"><div class="ic ic-loan">📄</div><div class="label">Sisa Angsuran</div><div class="val" id="loanVal">Rp 0</div><div class="hint">Ketuk untuk rincian →</div></div>
+      <div class="card clickable" data-detail="lembur"><div class="ic ic-lembur">⏱️</div><div class="label">Lembur Bulan Ini</div><div class="val" id="lemburVal">Rp 0</div><div class="hint" id="lemburHint">Ketuk untuk rincian →</div></div>
     </div>
   </div>
   <div>
@@ -436,7 +438,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_IkdsBvOhCOhmM5lnhZdSJA_3WK2xKBx";
 
 const CATS={masuk:["Gaji","Bonus","Bisnis Sampingan","Transfer Masuk","Hadiah","Lainnya"],
   keluar:["Kebutuhan Harian","Makan & Minum","Transportasi","Tagihan","Belanja","Hiburan","Kesehatan","Lainnya"]};
-let tx=[],wallets=[],savings=[],loans=[];
+let tx=[],wallets=[],savings=[],loans=[],lembur=[],lemburSet={};
 let period="bulanan",curType="keluar",chart=null;
 let supa=null,userId=null,currentUser=null,userName="",userAvatar=null;
 
@@ -466,11 +468,11 @@ async function loadAll(){
   if(error){console.error("load:",error);}
   const d=data&&data.data?data.data:null;
   const meta=(currentUser&&currentUser.user_metadata)||{};
-  if(d&&Array.isArray(d.tx)){tx=d.tx;wallets=d.wallets||[];savings=d.savings||[];loans=d.loans||[];userName=d.name||meta.name||"";userAvatar=d.avatar||null;}
+  if(d&&Array.isArray(d.tx)){tx=d.tx;wallets=d.wallets||[];savings=d.savings||[];loans=d.loans||[];lembur=d.lembur||[];lemburSet=d.lemburSet||{};userName=d.name||meta.name||"";userAvatar=d.avatar||null;}
   else{seed();userName=meta.name||"";userAvatar=null;await saveAll();}
 }
 async function saveAll(){
-  const payload={user_id:userId,data:{tx,wallets,savings,loans,name:userName,avatar:userAvatar,email:(currentUser&&currentUser.email)||""},updated_at:new Date().toISOString()};
+  const payload={user_id:userId,data:{tx,wallets,savings,loans,lembur,lemburSet,name:userName,avatar:userAvatar,email:(currentUser&&currentUser.email)||""},updated_at:new Date().toISOString()};
   const {error}=await supa.from("dashboards").upsert(payload,{onConflict:"user_id"});
   if(error)console.error("save:",error);
   return error;
@@ -511,6 +513,16 @@ function animAmt(el,to){
 }
 function monthlySeries(type){const now=new Date();const arr=[];for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const y=d.getFullYear(),m=d.getMonth();const s=`${y}-${String(m+1).padStart(2,"0")}-01`,e=`${y}-${String(m+1).padStart(2,"0")}-31`;arr.push(tx.filter(t=>t.type===type&&t.date>=s&&t.date<=e).reduce((a,t)=>a+t.amt,0));}return arr;}
 function sparkSVG(data,color){const w=100,h=30,max=Math.max(...data,1),min=Math.min(...data,0),range=(max-min)||1;const pts=data.map((v,i)=>`${((i/(data.length-1))*w).toFixed(1)},${(h-((v-min)/range)*(h-4)-2).toFixed(1)}`);return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;}
+/* ---------- Lembur ---------- */
+const curYM=()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;};
+const ymLabel=ym=>{const mn=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];const[y,m]=ym.split("-");return mn[+m-1]+" "+y;};
+const lemburSetting=ym=>lemburSet[ym]||{rate:0,gaji:0};
+const lemburRecs=ym=>lembur.filter(x=>x.date.slice(0,7)===ym);
+const lemburJam=ym=>lemburRecs(ym).reduce((s,x)=>s+(+x.hours||0),0);
+const lemburRp=ym=>{const r=lemburSetting(ym).rate;return lemburJam(ym)*r;};
+const lemburTotalGaji=ym=>lemburRp(ym)+(+lemburSetting(ym).gaji||0);
+function allLemburMonths(){const s=new Set([curYM(),...lembur.map(x=>x.date.slice(0,7)),...Object.keys(lemburSet)]);return [...s].sort().reverse();}
+
 function render(){
   animAmt($("balanceVal"),sumWall()+sumSav());
   animAmt($("outsideVal"),sumWall());
@@ -520,6 +532,8 @@ function render(){
   animAmt($("outVal"),sumTx("keluar"));
   animAmt($("savVal"),sumSav());
   animAmt($("loanVal"),sumRem());
+  animAmt($("lemburVal"),lemburRp(curYM()));
+  if($("lemburHint"))$("lemburHint").textContent=`${lemburJam(curYM())} jam · ${ymLabel(curYM())} · ketuk untuk rincian →`;
   const lime=cssVar('--lime')||'#c6f432',red=cssVar('--red')||'#ff6b6b';
   if($("sparkIn"))$("sparkIn").innerHTML=balanceHidden?"":sparkSVG(monthlySeries("masuk"),lime);
   if($("sparkOut"))$("sparkOut").innerHTML=balanceHidden?"":sparkSVG(monthlySeries("keluar"),red);
@@ -644,6 +658,34 @@ function openDetail(kind){
     b.querySelectorAll("[data-loan]").forEach(btn=>btn.onclick=async()=>{loans=loans.filter(x=>x.id!==btn.dataset.loan);render();openDetail("angsuran");saveBg();});
     b.querySelectorAll("[data-pay]").forEach(btn=>btn.onclick=async()=>{const[lid,pid]=btn.dataset.pay.split(":");const l=loans.find(x=>x.id===lid);
       l.payments=l.payments.filter(x=>x.id!==pid);render();openDetail("angsuran");saveBg();});
+  }
+  else if(kind==="lembur"){
+    t.textContent="Lembur Kerja";
+    const ym=window._lemburYM||curYM();
+    const set=lemburSetting(ym),recs=lemburRecs(ym).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+    const jam=lemburJam(ym),rupiah=lemburRp(ym),totGaji=lemburTotalGaji(ym);
+    const monthOpts=allLemburMonths().map(m=>`<option value="${m}" ${m===ym?"selected":""}>${ymLabel(m)}</option>`).join("");
+    b.innerHTML=`
+      <div class="field"><label>Pilih Bulan</label><select id="lb_month">${monthOpts}</select></div>
+      <div class="dsum"><div class="k">Total Jam<b>${jam} jam</b></div><div class="k">Total Lembur<b class="lime">${rp(rupiah)}</b></div><div class="k">Lembur + Gaji Pokok<b>${rp(totGaji)}</b></div></div>
+      <div class="field"><label>Tarif per Jam — ${esc(ymLabel(ym))}</label><input id="lb_rate" class="money" type="text" inputmode="numeric" value="${set.rate?fmtRpInput(set.rate):""}" placeholder="Rp 0 /jam"/></div>
+      <div class="field"><label>Gaji Pokok — ${esc(ymLabel(ym))}</label><input id="lb_gaji" class="money" type="text" inputmode="numeric" value="${set.gaji?fmtRpInput(set.gaji):""}" placeholder="Rp 0"/></div>
+      <button class="btn btn-lime btn-sm" id="lb_saveSet" style="margin-bottom:18px">Simpan Tarif & Gaji Pokok</button>
+      <div class="note" style="margin-top:-8px;margin-bottom:14px">Nominal lembur dihitung otomatis: jam × tarif per jam bulan ini.</div>
+      <div class="addrow"><input id="lb_date" type="date" value="${ym}-01"/><input id="lb_hours" type="number" min="0" step="0.5" placeholder="Jumlah jam"/><button class="btn btn-lime btn-sm" id="lb_add">+ Catat Lembur</button></div>
+      <div class="dlist" style="margin-top:14px">${recs.length?recs.map(r=>`<div class="drow"><div class="di in">⏱️</div><div class="dm"><div class="t">${r.hours} jam</div><div class="s">${dstr(r.date)}${set.rate?' · '+rp((+r.hours||0)*set.rate):''}</div></div><div class="da lime">${set.rate?rp((+r.hours||0)*set.rate):(r.hours+' jam')}</div><button class="delx" data-id="${r.id}">✕</button></div>`).join(""):'<div class="empty">Belum ada catatan lembur bulan ini.</div>'}</div>`;
+    $("lb_month").onchange=()=>{window._lemburYM=$("lb_month").value;openDetail("lembur");};
+    wireMoney(b);
+    $("lb_saveSet").onclick=async()=>{
+      lemburSet[ym]={rate:parseRp($("lb_rate").value),gaji:parseRp($("lb_gaji").value)};
+      render();openDetail("lembur");saveBg();};
+    $("lb_add").onclick=async()=>{
+      const dt=$("lb_date").value,hrs=parseFloat($("lb_hours").value);
+      if(!dt||!hrs||hrs<=0){$("lb_hours").focus();return;}
+      lembur.push({id:uid(),date:dt,hours:hrs});
+      window._lemburYM=dt.slice(0,7);
+      render();openDetail("lembur");saveBg();};
+    b.querySelectorAll(".delx").forEach(btn=>btn.onclick=async()=>{lembur=lembur.filter(x=>x.id!==btn.dataset.id);render();openDetail("lembur");saveBg();});
   }
   else if(kind==="ringkasan"){
     t.textContent="Ringkasan Keuangan";

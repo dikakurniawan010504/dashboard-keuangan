@@ -523,6 +523,11 @@ const lemburJam=ym=>lemburRecs(ym).reduce((s,x)=>s+(+x.hours||0),0);
 const lemburRp=ym=>{const r=lemburSetting(ym).rate;return lemburJam(ym)*r;};
 const lemburTotalGaji=ym=>lemburRp(ym)+(+lemburSetting(ym).gaji||0);
 function allLemburMonths(){const s=new Set([curYM(),...lembur.map(x=>x.date.slice(0,7)),...Object.keys(lemburSet)]);return [...s].sort().reverse();}
+function lemburYearTotals(year){
+  const months=allLemburMonths().filter(m=>m.startsWith(year+"-"));
+  let jam=0,rupiah=0;months.forEach(m=>{jam+=lemburJam(m);rupiah+=lemburRp(m);});
+  return {jam,rupiah};
+}
 
 function render(){
   animAmt($("balanceVal"),sumWall()+sumSav());
@@ -665,16 +670,20 @@ function openDetail(kind){
     const ym=window._lemburYM||curYM();
     const set=lemburSetting(ym),recs=lemburRecs(ym).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
     const jam=lemburJam(ym),rupiah=lemburRp(ym),totGaji=lemburTotalGaji(ym);
+    const yr=ym.slice(0,4),yTot=lemburYearTotals(yr);
     const monthOpts=allLemburMonths().map(m=>`<option value="${m}" ${m===ym?"selected":""}>${ymLabel(m)}</option>`).join("");
     b.innerHTML=`
+      <div class="note" style="background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:16px">📌 Catatan Lembur ini <b>terpisah total</b> dari Total Keuangan / Pemasukan-Pengeluaran di dashboard. Datanya khusus untuk menghitung penghasilan lemburmu sendiri, tidak ikut ke saldo manapun.</div>
       <div class="field"><label>Pilih Bulan</label><select id="lb_month">${monthOpts}</select></div>
-      <div class="dsum"><div class="k">Total Jam<b>${jam} jam</b></div><div class="k">Total Lembur<b class="lime">${rp(rupiah)}</b></div><div class="k">Lembur + Gaji Pokok<b>${rp(totGaji)}</b></div></div>
-      <div class="field"><label>Tarif per Jam — ${esc(ymLabel(ym))}</label><input id="lb_rate" class="money" type="text" inputmode="numeric" value="${set.rate?fmtRpInput(set.rate):""}" placeholder="Rp 0 /jam"/></div>
+      <div class="dsum"><div class="k">Total Jam — ${esc(ymLabel(ym))}<b>${jam} jam</b></div><div class="k">Total Lembur (Rp)<b class="lime">${rp(rupiah)}</b></div><div class="k">Lembur + Gaji Pokok<b>${rp(totGaji)}</b></div></div>
+      <div class="dsum" style="margin-top:8px"><div class="k">Total Jam Lembur ${yr} (semua bulan)<b>${yTot.jam} jam</b></div><div class="k">Total Hasil Lembur ${yr}<b class="lime">${rp(yTot.rupiah)}</b></div></div>
+      <div class="field" style="margin-top:16px"><label>Tarif per Jam — ${esc(ymLabel(ym))}</label><input id="lb_rate" class="money" type="text" inputmode="numeric" value="${set.rate?fmtRpInput(set.rate):""}" placeholder="Rp 0 /jam"/></div>
       <div class="field"><label>Gaji Pokok — ${esc(ymLabel(ym))}</label><input id="lb_gaji" class="money" type="text" inputmode="numeric" value="${set.gaji?fmtRpInput(set.gaji):""}" placeholder="Rp 0"/></div>
       <button class="btn btn-lime btn-sm" id="lb_saveSet" style="margin-bottom:18px">Simpan Tarif & Gaji Pokok</button>
       <div class="note" style="margin-top:-8px;margin-bottom:14px">Nominal lembur dihitung otomatis: jam × tarif per jam bulan ini.</div>
       <div class="addrow"><input id="lb_date" type="date" value="${ym}-01"/><input id="lb_hours" type="number" min="0" step="0.5" placeholder="Jumlah jam"/><button class="btn btn-lime btn-sm" id="lb_add">+ Catat Lembur</button></div>
-      <div class="dlist" style="margin-top:14px">${recs.length?recs.map(r=>`<div class="drow"><div class="di in">⏱️</div><div class="dm"><div class="t">${r.hours} jam</div><div class="s">${dstr(r.date)}${set.rate?' · '+rp((+r.hours||0)*set.rate):''}</div></div><div class="da lime">${set.rate?rp((+r.hours||0)*set.rate):(r.hours+' jam')}</div><button class="delx" data-id="${r.id}">✕</button></div>`).join(""):'<div class="empty">Belum ada catatan lembur bulan ini.</div>'}</div>`;
+      <h3 style="font-size:14px;font-weight:700;margin:20px 0 10px">Riwayat Lembur — ${esc(ymLabel(ym))}</h3>
+      <div class="dlist">${recs.length?recs.map(r=>{const hasil=set.rate?(+r.hours||0)*set.rate:0;return `<div class="drow"><div class="di in">⏱️</div><div class="dm"><div class="t">${dstr(r.date)}</div><div class="s">${r.hours} jam${set.rate?' · tarif '+rp(set.rate)+'/jam':' · tarif belum diisi'}</div></div><div class="da lime">${set.rate?rp(hasil):'—'}</div><button class="delx" data-id="${r.id}">✕</button></div>`;}).join(""):'<div class="empty">Belum ada catatan lembur bulan ini. Isi tanggal & jumlah jam di atas, lalu ketuk "+ Catat Lembur".</div>'}</div>`;
     $("lb_month").onchange=()=>{window._lemburYM=$("lb_month").value;openDetail("lembur");};
     wireMoney(b);
     $("lb_saveSet").onclick=async()=>{

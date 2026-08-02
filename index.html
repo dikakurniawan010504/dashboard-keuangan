@@ -405,8 +405,14 @@
     <div class="statfilters">
       <select id="lb_year"></select>
       <select id="lb_monthSel"><option value="">Semua Bulan (setahun)</option></select>
+      <button class="btn btn-ghost btn-sm" id="lb_toggleChart">📊 Grafik & Perbandingan</button>
     </div>
     <div class="lapstat" id="lb_stat"></div>
+    <div class="lapgrid" id="lb_chartsPanel" style="display:none;margin-bottom:16px">
+      <div class="lapcard"><h3>Perbandingan Jam Lembur per Bulan — <span id="lb_chartYearLbl1"></span></h3><div class="lapchart"><canvas id="lbChartMonthsJam"></canvas></div></div>
+      <div class="lapcard"><h3>Perbandingan Hasil Lembur (Rp) per Bulan — <span id="lb_chartYearLbl2"></span></h3><div class="lapchart"><canvas id="lbChartMonthsRp"></canvas></div></div>
+      <div class="lapcard" id="lb_dailyCard" style="grid-column:1 / -1"><h3 id="lb_dailyTitle">Tren Harian Lembur</h3><div class="lapchart"><canvas id="lbChartDaily"></canvas></div></div>
+    </div>
     <div class="lapcard" id="lb_settingsCard" style="margin-bottom:16px">
       <h3 id="lb_settingsTitle">Tarif & Gaji Pokok</h3>
       <div class="statfilters" style="margin-bottom:0">
@@ -414,6 +420,7 @@
         <input id="lb_gaji" class="money" type="text" inputmode="numeric" placeholder="Gaji pokok (Rp)" style="flex:1;min-width:160px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-family:var(--font);font-size:13px;padding:9px 12px;border-radius:10px;outline:none"/>
         <button class="btn btn-lime btn-sm" id="lb_saveSet">Simpan</button>
       </div>
+      <div class="note" id="lb_settingsNote" style="margin-top:8px"></div>
     </div>
     <div class="lapcard" id="lb_addCard" style="margin-bottom:16px">
       <h3>Catat Lembur Baru</h3>
@@ -564,10 +571,15 @@ function sparkSVG(data,color){const w=100,h=30,max=Math.max(...data,1),min=Math.
 const curYM=()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;};
 const ymLabel=ym=>{const mn=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];const[y,m]=ym.split("-");return mn[+m-1]+" "+y;};
 const lemburSetting=ym=>lemburSet[ym]||{rate:0,gaji:0};
+function effectiveLemburSetting(ym){
+  if(lemburSet[ym])return lemburSet[ym];
+  const prior=Object.keys(lemburSet).filter(k=>k<ym).sort();
+  return prior.length?lemburSet[prior[prior.length-1]]:{rate:0,gaji:0};
+}
 const lemburRecs=ym=>lembur.filter(x=>x.date.slice(0,7)===ym);
 const lemburJam=ym=>lemburRecs(ym).reduce((s,x)=>s+(+x.hours||0),0);
-const lemburRp=ym=>{const r=lemburSetting(ym).rate;return lemburJam(ym)*r;};
-const lemburTotalGaji=ym=>lemburRp(ym)+(+lemburSetting(ym).gaji||0);
+const lemburRp=ym=>{const r=effectiveLemburSetting(ym).rate;return lemburJam(ym)*r;};
+const lemburTotalGaji=ym=>lemburRp(ym)+(+effectiveLemburSetting(ym).gaji||0);
 function allLemburMonths(){const s=new Set([curYM(),...lembur.map(x=>x.date.slice(0,7)),...Object.keys(lemburSet)]);return [...s].sort().reverse();}
 function lemburYearTotals(year){
   const months=allLemburMonths().filter(m=>m.startsWith(year+"-"));
@@ -577,6 +589,7 @@ function lemburYearTotals(year){
 
 const MN_ID=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 function lemburYears(){const s=new Set([String(new Date().getFullYear()),...lembur.map(x=>x.date.slice(0,4)),...Object.keys(lemburSet).map(k=>k.slice(0,4))]);return [...s].sort().reverse();}
+let lbEditId=null;
 function renderLemburPage(){
   const years=lemburYears();
   if(window._lbYear===undefined||!years.includes(window._lbYear))window._lbYear=years[0]||String(new Date().getFullYear());
@@ -590,10 +603,11 @@ function renderLemburPage(){
 
   if(ym){
     $("lb_settingsCard").style.display="";
+    const own=lemburSet[ym],eff=effectiveLemburSetting(ym);
     $("lb_settingsTitle").textContent=`Tarif & Gaji Pokok — ${ymLabel(ym)}`;
-    const set=lemburSetting(ym);
-    $("lb_rate").value=set.rate?fmtRpInput(set.rate):"";
-    $("lb_gaji").value=set.gaji?fmtRpInput(set.gaji):"";
+    $("lb_rate").value=eff.rate?fmtRpInput(eff.rate):"";
+    $("lb_gaji").value=eff.gaji?fmtRpInput(eff.gaji):"";
+    $("lb_settingsNote").textContent=own?"Tarif & gaji pokok bulan ini sudah kamu simpan sendiri.":(eff.rate||eff.gaji?"Otomatis memakai tarif & gaji pokok bulan sebelumnya. Ubah & Simpan kalau ada perubahan.":"Belum ada tarif tersimpan — isi lalu Simpan.");
   }else{$("lb_settingsCard").style.display="none";}
 
   $("lb_date").value=ym?`${ym}-01`:`${year}-01-01`;
@@ -601,13 +615,20 @@ function renderLemburPage(){
 
   let totJam=0,totRp=0;
   $("lb_tbody").innerHTML=recs.length?recs.map(r=>{
-    const rym=r.date.slice(0,7),rset=lemburSetting(rym),hasil=(+r.hours||0)*(rset.rate||0);
+    const rym=r.date.slice(0,7),rset=effectiveLemburSetting(rym),hasil=(+r.hours||0)*(rset.rate||0);
     totJam+=+r.hours||0;totRp+=hasil;
-    return `<tr><td>${dstr(r.date)}</td><td>${r.hours} jam</td><td>${rset.rate?rp(rset.rate)+'/jam':'—'}</td><td class="lime" style="font-weight:700">${rset.rate?rp(hasil):'—'}</td><td><button class="del" data-id="${r.id}">✕</button></td></tr>`;
+    if(r.id===lbEditId){
+      return `<tr><td><input type="date" id="lbEditDate" value="${r.date}" style="background:var(--panel-2);border:1px solid var(--lime);color:var(--text);font-family:var(--font);font-size:13px;padding:6px 8px;border-radius:8px;outline:none"/></td>
+        <td><input type="number" min="0" step="0.5" id="lbEditHours" value="${r.hours}" style="width:80px;background:var(--panel-2);border:1px solid var(--lime);color:var(--text);font-family:var(--font);font-size:13px;padding:6px 8px;border-radius:8px;outline:none"/></td>
+        <td>${rset.rate?rp(rset.rate)+'/jam':'—'}</td><td class="lime" style="font-weight:700">${rset.rate?rp(hasil):'—'}</td>
+        <td style="white-space:nowrap"><button class="del" data-save="${r.id}" title="Simpan">✓</button><button class="del" data-cancel="1" title="Batal">✕</button></td></tr>`;
+    }
+    return `<tr><td>${dstr(r.date)}</td><td>${r.hours} jam</td><td>${rset.rate?rp(rset.rate)+'/jam':'—'}</td><td class="lime" style="font-weight:700">${rset.rate?rp(hasil):'—'}</td>
+      <td style="white-space:nowrap"><button class="del" data-edit="${r.id}" title="Edit">✏️</button><button class="del" data-id="${r.id}" title="Hapus">✕</button></td></tr>`;
   }).join(""):`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:26px 0">Belum ada catatan lembur.</td></tr>`;
   $("lb_tfoot").innerHTML=recs.length?`<tr><td>Total</td><td>${totJam} jam</td><td></td><td class="lime">${rp(totRp)}</td><td></td></tr>`:"";
 
-  const gajiTot=ym?(+lemburSetting(ym).gaji||0):0;
+  const gajiTot=ym?(+effectiveLemburSetting(ym).gaji||0):0;
   $("lb_stat").innerHTML=ym?
     `<div class="s"><div class="l">Total Jam — ${ymLabel(ym)}</div><div class="v">${totJam} jam</div></div>
      <div class="s"><div class="l">Total Lembur (Rp)</div><div class="v lime">${rp(totRp)}</div></div>
@@ -616,11 +637,50 @@ function renderLemburPage(){
     `<div class="s"><div class="l">Total Jam — Tahun ${year}</div><div class="v">${totJam} jam</div></div>
      <div class="s"><div class="l">Total Hasil Lembur ${year}</div><div class="v lime">${rp(totRp)}</div></div>`;
 
-  $("lb_tbody").querySelectorAll(".del").forEach(btn=>btn.onclick=async()=>{
+  $("lb_tbody").querySelectorAll("[data-id]").forEach(btn=>btn.onclick=async()=>{
     lembur=lembur.filter(x=>x.id!==btn.dataset.id);renderLemburPage();render();saveBg();});
+  $("lb_tbody").querySelectorAll("[data-edit]").forEach(btn=>btn.onclick=()=>{lbEditId=btn.dataset.edit;renderLemburPage();});
+  $("lb_tbody").querySelectorAll("[data-cancel]").forEach(btn=>btn.onclick=()=>{lbEditId=null;renderLemburPage();});
+  $("lb_tbody").querySelectorAll("[data-save]").forEach(btn=>btn.onclick=async()=>{
+    const id=btn.dataset.save,dt=$("lbEditDate").value,hrs=parseFloat($("lbEditHours").value);
+    if(!dt||!hrs||hrs<=0)return;
+    const r=lembur.find(x=>x.id===id);if(r){r.date=dt;r.hours=hrs;}
+    lbEditId=null;
+    window._lbYear=dt.slice(0,4);if(window._lbMonth)window._lbMonth=dt.slice(5,7);
+    renderLemburPage();render();saveBg();});
+
+  renderLemburCharts();
 }
 function openLemburPage(){$("lemburGate").classList.add("open");renderLemburPage();}
-function closeLemburPage(){$("lemburGate").classList.remove("open");}
+function closeLemburPage(){$("lemburGate").classList.remove("open");destroyLbCharts();}
+
+let lbCharts=[];
+function destroyLbCharts(){lbCharts.forEach(c=>{try{c.destroy();}catch(e){}});lbCharts=[];}
+function renderLemburCharts(){
+  if(!$("lb_chartsPanel")||$("lb_chartsPanel").style.display==="none")return;
+  destroyLbCharts();
+  const year=window._lbYear,month=window._lbMonth;
+  const gold="#fbbf24",lime=cssVar('--lime')||'#c6f432',muted=cssVar('--muted')||'#8c918a',line=cssVar('--line')||'#262a26';
+  $("lb_chartYearLbl1").textContent=year;$("lb_chartYearLbl2").textContent=year;
+  const jamArr=[],rpArr=[];
+  for(let m=1;m<=12;m++){const ym2=`${year}-${String(m).padStart(2,"0")}`;jamArr.push(lemburJam(ym2));rpArr.push(lemburRp(ym2));}
+  lbCharts.push(new Chart($("lbChartMonthsJam"),{type:"bar",data:{labels:MN_ID.map(m=>m.slice(0,3)),datasets:[{label:"Jam Lembur",data:jamArr,backgroundColor:gold,borderRadius:5,maxBarThickness:18}]},options:{...lapBase(muted,line),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+" jam"}}}}}));
+  lbCharts.push(new Chart($("lbChartMonthsRp"),{type:"bar",data:{labels:MN_ID.map(m=>m.slice(0,3)),datasets:[{label:"Hasil Lembur (Rp)",data:rpArr,backgroundColor:lime,borderRadius:5,maxBarThickness:18}]},options:lapBase(muted,line)}));
+
+  if(month){
+    $("lb_dailyCard").style.display="";
+    const ym=`${year}-${month}`;
+    $("lb_dailyTitle").textContent=`Tren Harian Lembur — ${ymLabel(ym)}`;
+    const dim=new Date(+year,+month,0).getDate();
+    const dayLabels=[],dayJam=[];
+    for(let d=1;d<=dim;d++){const ds=`${ym}-${String(d).padStart(2,"0")}`;dayLabels.push(String(d));
+      dayJam.push(lembur.filter(x=>x.date===ds).reduce((s,x)=>s+(+x.hours||0),0));}
+    lbCharts.push(new Chart($("lbChartDaily"),{type:"line",data:{labels:dayLabels,datasets:[{label:"Jam Lembur per Hari",data:dayJam,borderColor:gold,backgroundColor:"rgba(251,191,36,.15)",fill:true,tension:.35,pointRadius:2,pointBackgroundColor:gold}]},options:{...lapBase(muted,line),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+" jam"}}}}}));
+  }else{
+    $("lb_dailyCard").style.display="none";
+    $("lb_dailyTitle").textContent="Tren Harian Lembur";
+  }
+}
 
 function render(){
   animAmt($("balanceVal"),sumWall()+sumSav());
@@ -860,6 +920,11 @@ $("lemburCard").onclick=openLemburPage;
 $("lemburBack").onclick=closeLemburPage;
 $("lb_year").onchange=()=>{window._lbYear=$("lb_year").value;renderLemburPage();};
 $("lb_monthSel").onchange=()=>{window._lbMonth=$("lb_monthSel").value;renderLemburPage();};
+$("lb_toggleChart").onclick=()=>{
+  const panel=$("lb_chartsPanel");
+  if(panel.style.display==="none"){panel.style.display="";renderLemburCharts();}
+  else{panel.style.display="none";destroyLbCharts();}
+};
 attachMoney($("lb_rate"));attachMoney($("lb_gaji"));
 $("lb_saveSet").onclick=async()=>{
   const year=window._lbYear,month=window._lbMonth;

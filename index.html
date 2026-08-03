@@ -567,55 +567,65 @@ function animAmt(el,to){
 }
 function monthlySeries(type){const now=new Date();const arr=[];for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const y=d.getFullYear(),m=d.getMonth();const s=`${y}-${String(m+1).padStart(2,"0")}-01`,e=`${y}-${String(m+1).padStart(2,"0")}-31`;arr.push(tx.filter(t=>t.type===type&&t.date>=s&&t.date<=e).reduce((a,t)=>a+t.amt,0));}return arr;}
 function sparkSVG(data,color){const w=100,h=30,max=Math.max(...data,1),min=Math.min(...data,0),range=(max-min)||1;const pts=data.map((v,i)=>`${((i/(data.length-1))*w).toFixed(1)},${(h-((v-min)/range)*(h-4)-2).toFixed(1)}`);return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;}
-/* ---------- Lembur ---------- */
-const curYM=()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;};
-const ymLabel=ym=>{const mn=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];const[y,m]=ym.split("-");return mn[+m-1]+" "+y;};
+/* ---------- Lembur (periode gajian: 26 - 25) ---------- */
+const MN_ID=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+function periodOf(dateStr){
+  const [y,m,d]=dateStr.split("-").map(Number);
+  if(d<=25)return `${y}-${String(m).padStart(2,"0")}`;
+  let ny=y,nm=m+1;if(nm>12){nm=1;ny=y+1;}
+  return `${ny}-${String(nm).padStart(2,"0")}`;
+}
+function periodRange(ym){
+  const [y,m]=ym.split("-").map(Number);
+  let py=y,pm=m-1;if(pm<1){pm=12;py=y-1;}
+  return {start:`${py}-${String(pm).padStart(2,"0")}-26`,end:`${y}-${String(m).padStart(2,"0")}-25`};
+}
+const curYM=()=>{const n=new Date();const ds=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`;return periodOf(ds);};
+const ymLabel=ym=>{const[y,m]=ym.split("-");return MN_ID[+m-1]+" "+y;};
+function periodLabel(ym){
+  const [y,m]=ym.split("-").map(Number);const{start,end}=periodRange(ym);
+  const [py,pm,pd]=start.split("-").map(Number),[ey,em,ed]=end.split("-").map(Number);
+  return `${MN_ID[m-1]} ${y} · ${pd} ${MN_ID[pm-1]} – ${ed} ${MN_ID[em-1]} ${ey}`;
+}
+function periodShortLabel(m){let pm=m-1;if(pm<1)pm=12;return `${MN_ID[m-1]} (26 ${MN_ID[pm-1].slice(0,3)} – 25 ${MN_ID[m-1].slice(0,3)})`;}
 const lemburSetting=ym=>lemburSet[ym]||{rate:0,gaji:0};
 function effectiveLemburSetting(ym){
   if(lemburSet[ym])return lemburSet[ym];
   const prior=Object.keys(lemburSet).filter(k=>k<ym).sort();
   return prior.length?lemburSet[prior[prior.length-1]]:{rate:0,gaji:0};
 }
-const lemburRecs=ym=>lembur.filter(x=>x.date.slice(0,7)===ym);
+const lemburRecs=ym=>lembur.filter(x=>periodOf(x.date)===ym);
 const lemburJam=ym=>lemburRecs(ym).reduce((s,x)=>s+(+x.hours||0),0);
 const lemburRp=ym=>{const r=effectiveLemburSetting(ym).rate;return lemburJam(ym)*r;};
 const lemburTotalGaji=ym=>lemburRp(ym)+(+effectiveLemburSetting(ym).gaji||0);
-function allLemburMonths(){const s=new Set([curYM(),...lembur.map(x=>x.date.slice(0,7)),...Object.keys(lemburSet)]);return [...s].sort().reverse();}
-function lemburYearTotals(year){
-  const months=allLemburMonths().filter(m=>m.startsWith(year+"-"));
-  let jam=0,rupiah=0;months.forEach(m=>{jam+=lemburJam(m);rupiah+=lemburRp(m);});
-  return {jam,rupiah};
-}
-
-const MN_ID=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-function lemburYears(){const s=new Set([String(new Date().getFullYear()),...lembur.map(x=>x.date.slice(0,4)),...Object.keys(lemburSet).map(k=>k.slice(0,4))]);return [...s].sort().reverse();}
+function lemburYears(){const s=new Set([curYM().slice(0,4),...lembur.map(x=>periodOf(x.date).slice(0,4)),...Object.keys(lemburSet).map(k=>k.slice(0,4))]);return [...s].sort().reverse();}
 let lbEditId=null;
 function renderLemburPage(){
   const years=lemburYears();
-  if(window._lbYear===undefined||!years.includes(window._lbYear))window._lbYear=years[0]||String(new Date().getFullYear());
+  if(window._lbYear===undefined||!years.includes(window._lbYear))window._lbYear=years[0]||curYM().slice(0,4);
   $("lb_year").innerHTML=years.map(y=>`<option value="${y}" ${y===window._lbYear?"selected":""}>${y}</option>`).join("");
-  if($("lb_monthSel").options.length<=1){$("lb_monthSel").innerHTML='<option value="">Semua Bulan (setahun)</option>'+MN_ID.map((m,i)=>`<option value="${String(i+1).padStart(2,"0")}">${m}</option>`).join("");}
-  if(window._lbMonth===undefined)window._lbMonth=String(new Date().getMonth()+1).padStart(2,"0");
+  if($("lb_monthSel").dataset.built!=="1"){$("lb_monthSel").innerHTML='<option value="">Semua Bulan (setahun)</option>'+MN_ID.map((m,i)=>`<option value="${String(i+1).padStart(2,"0")}">${periodShortLabel(i+1)}</option>`).join("");$("lb_monthSel").dataset.built="1";}
+  if(window._lbMonth===undefined)window._lbMonth=curYM().split("-")[1];
   $("lb_monthSel").value=window._lbMonth;
   const year=window._lbYear,month=window._lbMonth;
   const ym=month?`${year}-${month}`:null;
-  const recs=(ym?lemburRecs(ym):lembur.filter(x=>x.date.startsWith(year+"-"))).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const recs=(ym?lemburRecs(ym):lembur.filter(x=>periodOf(x.date).startsWith(year+"-"))).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
 
   if(ym){
     $("lb_settingsCard").style.display="";
     const own=lemburSet[ym],eff=effectiveLemburSetting(ym);
-    $("lb_settingsTitle").textContent=`Tarif & Gaji Pokok — ${ymLabel(ym)}`;
+    $("lb_settingsTitle").textContent=`Tarif & Gaji Pokok — ${periodLabel(ym)}`;
     $("lb_rate").value=eff.rate?fmtRpInput(eff.rate):"";
     $("lb_gaji").value=eff.gaji?fmtRpInput(eff.gaji):"";
-    $("lb_settingsNote").textContent=own?"Tarif & gaji pokok bulan ini sudah kamu simpan sendiri.":(eff.rate||eff.gaji?"Otomatis memakai tarif & gaji pokok bulan sebelumnya. Ubah & Simpan kalau ada perubahan.":"Belum ada tarif tersimpan — isi lalu Simpan.");
+    $("lb_settingsNote").textContent=own?"Tarif & gaji pokok periode ini sudah kamu simpan sendiri.":(eff.rate||eff.gaji?"Otomatis memakai tarif & gaji pokok periode sebelumnya. Ubah & Simpan kalau ada perubahan.":"Belum ada tarif tersimpan — isi lalu Simpan.");
   }else{$("lb_settingsCard").style.display="none";}
 
-  $("lb_date").value=ym?`${ym}-01`:`${year}-01-01`;
-  $("lb_tableTitle").textContent=ym?`Riwayat Lembur — ${ymLabel(ym)}`:`Riwayat Lembur — Tahun ${year} (Semua Bulan)`;
+  $("lb_date").value=ym?periodRange(ym).start:new Date().toISOString().slice(0,10);
+  $("lb_tableTitle").textContent=ym?`Riwayat Lembur — ${periodLabel(ym)}`:`Riwayat Lembur — Tahun ${year} (Semua Periode)`;
 
   let totJam=0,totRp=0;
   $("lb_tbody").innerHTML=recs.length?recs.map(r=>{
-    const rym=r.date.slice(0,7),rset=effectiveLemburSetting(rym),hasil=(+r.hours||0)*(rset.rate||0);
+    const rym=periodOf(r.date),rset=effectiveLemburSetting(rym),hasil=(+r.hours||0)*(rset.rate||0);
     totJam+=+r.hours||0;totRp+=hasil;
     if(r.id===lbEditId){
       return `<tr><td><input type="date" id="lbEditDate" value="${r.date}" style="background:var(--panel-2);border:1px solid var(--lime);color:var(--text);font-family:var(--font);font-size:13px;padding:6px 8px;border-radius:8px;outline:none"/></td>
@@ -630,7 +640,7 @@ function renderLemburPage(){
 
   const gajiTot=ym?(+effectiveLemburSetting(ym).gaji||0):0;
   $("lb_stat").innerHTML=ym?
-    `<div class="s"><div class="l">Total Jam — ${ymLabel(ym)}</div><div class="v">${totJam} jam</div></div>
+    `<div class="s"><div class="l">Total Jam — ${periodLabel(ym)}</div><div class="v">${totJam} jam</div></div>
      <div class="s"><div class="l">Total Lembur (Rp)</div><div class="v lime">${rp(totRp)}</div></div>
      <div class="s"><div class="l">Lembur + Gaji Pokok</div><div class="v">${rp(totRp+gajiTot)}</div></div>`
     :
@@ -646,7 +656,7 @@ function renderLemburPage(){
     if(!dt||!hrs||hrs<=0)return;
     const r=lembur.find(x=>x.id===id);if(r){r.date=dt;r.hours=hrs;}
     lbEditId=null;
-    window._lbYear=dt.slice(0,4);if(window._lbMonth)window._lbMonth=dt.slice(5,7);
+    const pym=periodOf(dt);window._lbYear=pym.slice(0,4);if(window._lbMonth)window._lbMonth=pym.slice(5,7);
     renderLemburPage();render();saveBg();});
 
   renderLemburCharts();
@@ -670,11 +680,16 @@ function renderLemburCharts(){
   if(month){
     $("lb_dailyCard").style.display="";
     const ym=`${year}-${month}`;
-    $("lb_dailyTitle").textContent=`Tren Harian Lembur — ${ymLabel(ym)}`;
-    const dim=new Date(+year,+month,0).getDate();
+    $("lb_dailyTitle").textContent=`Tren Harian Lembur — ${periodLabel(ym)}`;
+    const {start,end}=periodRange(ym);
     const dayLabels=[],dayJam=[];
-    for(let d=1;d<=dim;d++){const ds=`${ym}-${String(d).padStart(2,"0")}`;dayLabels.push(String(d));
-      dayJam.push(lembur.filter(x=>x.date===ds).reduce((s,x)=>s+(+x.hours||0),0));}
+    let cur=new Date(start+"T00:00:00");const endD=new Date(end+"T00:00:00");
+    while(cur<=endD){
+      const ds=`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,"0")}-${String(cur.getDate()).padStart(2,"0")}`;
+      dayLabels.push(`${cur.getDate()}/${cur.getMonth()+1}`);
+      dayJam.push(lembur.filter(x=>x.date===ds).reduce((s,x)=>s+(+x.hours||0),0));
+      cur.setDate(cur.getDate()+1);
+    }
     lbCharts.push(new Chart($("lbChartDaily"),{type:"line",data:{labels:dayLabels,datasets:[{label:"Jam Lembur per Hari",data:dayJam,borderColor:gold,backgroundColor:"rgba(251,191,36,.15)",fill:true,tension:.35,pointRadius:2,pointBackgroundColor:gold}]},options:{...lapBase(muted,line),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+" jam"}}}}}));
   }else{
     $("lb_dailyCard").style.display="none";
@@ -692,7 +707,7 @@ function render(){
   animAmt($("savVal"),sumSav());
   animAmt($("loanVal"),sumRem());
   animAmt($("lemburVal"),lemburRp(curYM()));
-  if($("lemburHint"))$("lemburHint").textContent=`${lemburJam(curYM())} jam · ${ymLabel(curYM())} · ketuk untuk rincian →`;
+  if($("lemburHint"))$("lemburHint").textContent=`${lemburJam(curYM())} jam · ${periodLabel(curYM())}`;
   const lime=cssVar('--lime')||'#c6f432',red=cssVar('--red')||'#ff6b6b';
   if($("sparkIn"))$("sparkIn").innerHTML=balanceHidden?"":sparkSVG(monthlySeries("masuk"),lime);
   if($("sparkOut"))$("sparkOut").innerHTML=balanceHidden?"":sparkSVG(monthlySeries("keluar"),red);
@@ -936,8 +951,8 @@ $("lb_add").onclick=async()=>{
   const dt=$("lb_date").value,hrs=parseFloat($("lb_hours").value);
   if(!dt||!hrs||hrs<=0){$("lb_hours").focus();return;}
   lembur.push({id:uid(),date:dt,hours:hrs});
-  window._lbYear=dt.slice(0,4);
-  if(window._lbMonth)window._lbMonth=dt.slice(5,7);
+  const pym=periodOf(dt);window._lbYear=pym.slice(0,4);
+  if(window._lbMonth)window._lbMonth=pym.slice(5,7);
   $("lb_hours").value="";
   renderLemburPage();render();saveBg();};
 $("lapBack").onclick=closeLaporan;

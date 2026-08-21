@@ -394,6 +394,15 @@
         <div class="pfmsg" id="pfPassMsg"></div>
       </div>
     </div>
+    <div class="pfcard">
+      <h3 class="pfsub">Backup &amp; Restore Data</h3>
+      <div class="pfhint" style="margin-bottom:10px">Simpan salinan semua data kamu (transaksi, tabungan, angsuran, lembur) jadi 1 file. Kalau suatu saat ada masalah (koneksi/server), kamu bisa restore dari file ini kapan aja.</div>
+      <div class="pfrow" style="gap:8px;flex-wrap:wrap">
+        <button class="btn btn-lime btn-sm" id="pfExportBtn">⬇️ Download Backup (.json)</button>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆️ Import dari Backup<input type="file" id="pfImportInput" accept=".json,application/json" hidden></label>
+      </div>
+      <div class="pfmsg" id="pfBackupMsg"></div>
+    </div>
     <div class="pffooter">
       <div class="pff-title">Mywallet</div>
       <div class="pff-sub">by Dika Kurniawan &middot; &copy; 2026</div>
@@ -555,6 +564,38 @@ function seed(){
 async function resetAll(){
   if(!confirm("Kosongkan SEMUA data (transaksi, pos, tabungan, angsuran)?\nTindakan ini tidak bisa dibatalkan."))return;
   tx=[];wallets=[];savings=[];loans=[];await saveAll();closeDetail();render();
+}
+
+/* ---------- BACKUP / RESTORE (export & import file .json) ---------- */
+function pfBackupMsg(m,ok){const el=$("pfBackupMsg");if(!el)return;el.textContent=m;el.className="pfmsg"+(ok?"":" err");}
+function exportBackup(){
+  const payload={app:"mywallet",version:1,exportedAt:new Date().toISOString(),email:(currentUser&&currentUser.email)||"",data:{tx,wallets,savings,loans,lembur,lemburSet,name:userName,avatar:userAvatar}};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const d=new Date();
+  const stamp=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  const a=document.createElement("a");
+  a.href=url;a.download=`mywallet-backup-${stamp}.json`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  pfBackupMsg("Backup berhasil diunduh ✓",true);
+}
+function importBackupFile(file){
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    let parsed;
+    try{parsed=JSON.parse(reader.result);}catch(e){pfBackupMsg("File bukan format JSON yang valid.");return;}
+    const d=(parsed&&parsed.data&&Array.isArray(parsed.data.tx))?parsed.data:parsed;
+    if(!d||!Array.isArray(d.tx)){pfBackupMsg("Format file tidak dikenali (bukan file backup Mywallet).");return;}
+    if(!confirm("Import backup ini akan MENIMPA semua data kamu SAAT INI (transaksi, tabungan, angsuran, lembur, profil) dengan isi file backup.\n\nLanjutkan?"))return;
+    tx=Array.isArray(d.tx)?d.tx:[];wallets=Array.isArray(d.wallets)?d.wallets:[];savings=Array.isArray(d.savings)?d.savings:[];loans=Array.isArray(d.loans)?d.loans:[];lembur=Array.isArray(d.lembur)?d.lembur:[];lemburSet=d.lemburSet&&typeof d.lemburSet==="object"?d.lemburSet:{};
+    if(typeof d.name==="string")userName=d.name;
+    if(d.avatar!==undefined)userAvatar=d.avatar;
+    setHeader();renderAvatar($("pfAvatar"));renderAvatar($("avatarEl"));populateYears();render();
+    pfBackupMsg("Backup berhasil di-import ✓ (tersimpan otomatis)",true);
+    saveBg();
+  };
+  reader.readAsText(file);
 }
 
 const sumTx=t=>tx.filter(x=>x.type===t).reduce((s,x)=>s+x.amt,0);
@@ -1050,6 +1091,8 @@ $("pfPassSave").onclick=async()=>{const p=$("pfPass").value,p2=$("pfPass2").valu
   if(error){pfPassMsg(error.message);return;}
   pfPassMsg("Password berhasil diganti ✓",true);$("pfPass").value="";$("pfPass2").value="";
 };
+$("pfExportBtn").onclick=exportBackup;
+$("pfImportInput").onchange=e=>{const f=e.target.files[0];if(f)importBackupFile(f);e.target.value="";};
 
 async function onLoggedIn(session){
   currentUser=session.user;userId=session.user.id;

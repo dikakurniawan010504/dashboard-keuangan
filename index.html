@@ -532,14 +532,18 @@ function posOptions(sel){return `<option value="">— Tanpa pos —</option>`+wa
 /* ---------- DATABASE (Supabase, per akun) ---------- */
 async function loadAll(){
   const {data,error}=await supa.from("dashboards").select("data").eq("user_id",userId).maybeSingle();
-  if(error){
-    console.error("load:",error);
-    return false; // GAGAL ambil data (koneksi/server) -> jangan sentuh tx/wallets/dll, jangan seed, jangan save. Mencegah data lama tertimpa kosong.
+  // PENTING: loadAll() TIDAK PERNAH lagi membuat/menimpa row baru (seed+save) di sini, apa pun kondisinya.
+  // Row kosong untuk akun baru sekarang dijamin sudah dibuat otomatis di sisi database (trigger on_auth_user_created)
+  // begitu akun dibuat, jadi kalau di sini query gagal ATAU baris tidak ketemu/isinya tidak valid, itu SELALU dianggap
+  // anomali (koneksi, RLS race condition, dsb) -> jangan sentuh apa pun, jangan save, tampilkan retry. Ini mencegah
+  // kelas bug "load gagal -> dikira akun baru -> data lama ketimpa kosong" terulang lagi dengan cara apa pun.
+  if(error||!data||!data.data||!Array.isArray(data.data.tx)){
+    console.error("load:",error||"row kosong/tidak valid");
+    return false;
   }
-  const d=data&&data.data?data.data:null;
+  const d=data.data;
   const meta=(currentUser&&currentUser.user_metadata)||{};
-  if(d&&Array.isArray(d.tx)){tx=d.tx;wallets=d.wallets||[];savings=d.savings||[];loans=d.loans||[];lembur=d.lembur||[];lemburSet=d.lemburSet||{};userName=d.name||meta.name||"";userAvatar=d.avatar||null;}
-  else{seed();userName=meta.name||"";userAvatar=null;await saveAll();} // akun baru asli (tidak ada error, tidak ada row) -> aman untuk seed
+  tx=d.tx;wallets=d.wallets||[];savings=d.savings||[];loans=d.loans||[];lembur=d.lembur||[];lemburSet=d.lemburSet||{};userName=d.name||meta.name||"";userAvatar=d.avatar||null;
   return true;
 }
 async function saveAll(){

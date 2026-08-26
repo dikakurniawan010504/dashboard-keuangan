@@ -673,7 +673,7 @@ function renderLemburPage(){
     $("lb_settingsNote").textContent=own?"Tarif & gaji pokok periode ini sudah kamu simpan sendiri.":(eff.rate||eff.gaji?"Otomatis memakai tarif & gaji pokok periode sebelumnya. Ubah & Simpan kalau ada perubahan.":"Belum ada tarif tersimpan — isi lalu Simpan.");
   }else{$("lb_settingsCard").style.display="none";}
 
-  $("lb_date").value=ym?periodRange(ym).start:new Date().toISOString().slice(0,10);
+  $("lb_date").value=new Date().toISOString().slice(0,10); // selalu default ke hari ini, apa pun filter periode yang lagi dipilih — tetap bisa diganti manual
   $("lb_tableTitle").textContent=ym?`Riwayat Lembur — ${periodLabel(ym)}`:`Riwayat Lembur — Tahun ${year} (Semua Periode)`;
 
   let totJam=0,totRp=0;
